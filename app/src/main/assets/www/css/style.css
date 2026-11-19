@@ -6,8 +6,8 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;color:var(--text);
   font-family:'SamsungOne','Segoe UI',Roboto,'Noto Sans Arabic','DejaVu Sans',Tahoma,sans-serif;font-size:26px}
-html:not(.tv){background:var(--bg)}
-html.tv,html.tv body{background:transparent}
+html:not(.tv),html.h5{background:var(--bg)}
+html.tv:not(.h5),html.tv:not(.h5) body{background:transparent}
 #app{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden}
 #avplayer{position:absolute;left:0;top:0;width:1920px;height:1080px}
 html:not(.tv) #avplayer{display:none}
@@ -23,11 +23,11 @@ body.vid #bg{display:none}
 /* ---------- video stage (a "hole" in the page) ---------- */
 #stage{position:absolute;display:none;z-index:1;border-radius:22px;
   box-shadow:0 0 0 2400px var(--bg);outline:2px solid rgba(255,255,255,.13);overflow:hidden}
-html.tv #stage{background:transparent}
-html:not(.tv) #stage{background:#000}
+html.tv:not(.h5) #stage{background:transparent}
+html:not(.tv) #stage,html.h5 #stage{background:#000}
 #stage.full{border-radius:0;box-shadow:none;outline:none}
 #vid{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain}
-html.tv #vid{display:none}
+html.tv:not(.h5) #vid{display:none}
 #stageMsg{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;
   flex-direction:column;text-align:center;font-size:26px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.8);padding:20px}
 #stageMsg .sp{width:54px;height:54px;border-radius:50%;border:5px solid rgba(255,255,255,.18);border-top-color:var(--a1);

@@ -14,7 +14,7 @@ var AR = {
   nextEp: 'الحلقة التالية', prevEp: 'الحلقة السابقة', quality: 'الجودة', audio: 'الصوت', auto: 'تلقائي', menuTitle: 'خيارات التشغيل', onlyOne: 'هذا البث له جودة واحدة',
   autoNext: 'تشغيل الحلقة التالية تلقائياً', resumePlay: 'استكمال من حيث توقفت', fastStart: 'بدء سريع للبث', clearHist: 'مسح سجل المشاهدة', histCleared: 'تم مسح السجل',
   defQuality: 'الجودة الافتراضية', ui: 'الواجهة', playback: 'التشغيل', conn: 'الاتصال', accountT: 'الحساب', on: 'مفعّل', off: 'متوقف', lang2: 'اللغة',
-  aspect: 'ملاءمة الشاشة', aspFit: 'تلقائي (الأصلي)', aspFill: 'تمديد لملء الشاشة', aspZoom: 'تكبير (قص الأطراف)', asp169: 'عرض 16:9', asp43: 'عرض 4:3', asp219: 'عرض 21:9', aspNote: 'يغيّر طريقة عرض الصورة لتناسب شاشتك: تمديد يملأ الشاشة، وتكبير يقصّ الأطراف بدون أشرطة سوداء.', perf: 'وضع الأداء (أسرع)', perfNote: 'يوقف الحركات والانتقالات لتنقّل فوري، ويُنصح به في التلفزيونات الضعيفة.', qualNote: 'تنطبق الجودة على بثوث HLS فقط، أما باقي الصيغ فلها جودة واحدة.', fastNote: 'يقلل زمن الانتظار قبل ظهور الصورة، وقد يزيد التقطيع على الإنترنت الضعيف.',
+  aspect: 'ملاءمة الشاشة', aspFit: 'تلقائي (الأصلي)', aspFill: 'تمديد لملء الشاشة', aspZoom: 'تكبير (قص الأطراف)', asp169: 'عرض 16:9', asp43: 'عرض 4:3', asp219: 'عرض 21:9', aspNote: 'يغيّر طريقة عرض الصورة لتناسب شاشتك: تمديد يملأ الشاشة، وتكبير يقصّ الأطراف بدون أشرطة سوداء.', perf: 'وضع الأداء (أسرع)', perfNote: 'يوقف الحركات والانتقالات لتنقّل فوري، ويُنصح به في التلفزيونات الضعيفة.', qualNote: 'تنطبق الجودة على بثوث HLS فقط، أما باقي الصيغ فلها جودة واحدة.', engine: 'محرك التشغيل', engAuto: 'تلقائي', engineNote: 'AVPlay (الافتراضي): الأسرع والترجمة المدمجة تعمل. تلقائي/HTML5: قد يكون التقديم أسلس لكن الترجمة المدمجة في الملف لا تظهر على التلفزيون.', fastNote: 'يقلل زمن الانتظار قبل ظهور الصورة، وقد يزيد التقطيع على الإنترنت الضعيف.',
   vpnT: 'VPN / تجاوز الحجب', vpnMode: 'وضع الـ VPN', vpnOff: 'إيقاف', vpnAuto: 'تلقائي (عند الحجب فقط)', vpnAlways: 'دائماً (كل الاتصالات)', vpnVideo: 'تمرير الفيديو عبر الـ VPN', vpnAddr: 'عنوان خادم الـ VPN (الريلاي)', vpnTest: 'اختبار الاتصال', vpnNone: 'غير مضبوط', vpnWait: 'جاري الاختبار…', vpnOkT: 'يعمل ✓', vpnBadT: 'لا يرد ✗', vpnModeNote: 'تلقائي: يتصل مباشرة، ولو اتحجب يحوّل للخادم. دائماً: كل الطلبات (القنوات والأفلام والدليل والترجمة) تمر عبر الخادم.', vpnVideoNote: 'يمرّر البث نفسه عبر الخادم لتجاوز حجب الهوست. يحتاج خادماً سريعاً، وقد يبطّئ البث.', vpnAddrNote: 'عنوان جهاز على شبكتك أو سيرفر خارجي شغّال عليه relay.js، مثل http://192.168.1.10:8787', vpnAbout: 'تلفزيون سامسونج لا يسمح بتشغيل VPN حقيقي على الجهاز، فالتطبيق يمرّر اتصالاته عبر خادم وسيط (ريلاي) تشغّله على جهاز/سيرفر داخل VPN أو في بلد آخر، فيتجاوز الحجب.', chWord: 'قناة', movWord: 'فيلم', serWord: 'مسلسل', catWord: 'قسم', itemsWord: 'عنصر', editAcc: 'تعديل الحساب الحالي', relayRow: 'إعداد الريلاي',
   hintRows: 'للتفاصيل', hintSeek: 'تقديم / ترجيع', hintPause: 'إيقاف مؤقت', hintMenu: 'الجودة والصوت', playingNext: 'الحلقة التالية…', changed: 'الجودة', retryHint: 'تعذّر التشغيل. جرّب جودة أخرى (▲) أو ارجع.',
   hello: 'أهلاً بك', q1080: '1080p', watched: 'تمت المشاهدة', sNum: 'م', eNum: 'ح'
@@ -26,7 +26,7 @@ var EN = {
   nextEp: 'Next episode', prevEp: 'Previous episode', quality: 'Quality', audio: 'Audio', auto: 'Auto', menuTitle: 'Playback options', onlyOne: 'This stream has a single quality',
   autoNext: 'Autoplay next episode', resumePlay: 'Resume where you stopped', fastStart: 'Fast start', clearHist: 'Clear watch history', histCleared: 'History cleared',
   defQuality: 'Default quality', ui: 'Interface', playback: 'Playback', conn: 'Connection', accountT: 'Account', on: 'On', off: 'Off', lang2: 'Language',
-  aspect: 'Screen fit', aspFit: 'Auto (original)', aspFill: 'Stretch to fill', aspZoom: 'Zoom (crop edges)', asp169: 'Force 16:9', asp43: 'Force 4:3', asp219: 'Force 21:9', aspNote: 'Changes how the picture fits your screen: stretch fills it, zoom crops the edges with no black bars.', perf: 'Performance mode (faster)', perfNote: 'Turns off animations and transitions for instant navigation; recommended on weaker TVs.', qualNote: 'Quality applies to HLS streams only; other formats have a single quality.', fastNote: 'Shortens the wait before the picture appears; may stutter on slow internet.',
+  aspect: 'Screen fit', aspFit: 'Auto (original)', aspFill: 'Stretch to fill', aspZoom: 'Zoom (crop edges)', asp169: 'Force 16:9', asp43: 'Force 4:3', asp219: 'Force 21:9', aspNote: 'Changes how the picture fits your screen: stretch fills it, zoom crops the edges with no black bars.', perf: 'Performance mode (faster)', perfNote: 'Turns off animations and transitions for instant navigation; recommended on weaker TVs.', qualNote: 'Quality applies to HLS streams only; other formats have a single quality.', engine: 'Playback engine', engAuto: 'Auto', engineNote: 'AVPlay (default): fastest, and embedded subtitles work. Auto/HTML5: seeking may be smoother, but subtitles embedded in the file will not show on the TV.', fastNote: 'Shortens the wait before the picture appears; may stutter on slow internet.',
   vpnT: 'VPN / bypass blocking', vpnMode: 'VPN mode', vpnOff: 'Off', vpnAuto: 'Auto (only when blocked)', vpnAlways: 'Always (all connections)', vpnVideo: 'Send video through the VPN', vpnAddr: 'VPN server address (relay)', vpnTest: 'Test connection', vpnNone: 'Not set', vpnWait: 'Testing…', vpnOkT: 'Working ✓', vpnBadT: 'No reply ✗', vpnModeNote: 'Auto: connects directly and switches to the server if blocked. Always: every request (channels, movies, guide, subtitles) goes through the server.', vpnVideoNote: 'Sends the stream itself through the server to bypass host blocking. Needs a fast server and may slow playback.', vpnAddrNote: 'Address of a device on your network or an outside server running relay.js, e.g. http://192.168.1.10:8787', vpnAbout: 'Samsung TVs do not allow a real VPN on the device, so the app sends its connections through a relay server that you run on a device/server behind a VPN or in another country, which bypasses the blocking.', chWord: 'channels', movWord: 'movies', serWord: 'series', catWord: 'categories', itemsWord: 'items', editAcc: 'Edit current account', relayRow: 'Relay setup',
   hintRows: 'Details', hintSeek: 'Seek', hintPause: 'Pause', hintMenu: 'Quality & audio', playingNext: 'Next episode…', changed: 'Quality', retryHint: 'Could not play. Try another quality (▲) or go back.',
   hello: 'Welcome', q1080: '1080p', watched: 'Watched', sNum: 'S', eNum: 'E'
@@ -326,7 +326,7 @@ function finishRows() { R.r = Math.max(0, Math.min(R.r, R.rows.length - 1)); cla
 function clampCol() { var row = R.rows[R.r]; if (!row) { R.c = 0; return; } R.c = Math.max(0, Math.min(R.c, Math.max(0, row.items.length - 1))); }
 function isFavItem(it) { return Fav.has(it); }
 
-function thumb(u) { return String(u || '').replace(/\/t\/p\/(?:original|w\d{3,4}(?:_and_h\d+_[a-z0-9]+)?)\//i, '/t/p/w342/'); }
+function thumb(u, w) { return String(u || '').replace(/\/t\/p\/(?:original|w\d{3,4}(?:_and_h\d+_[a-z0-9]+)?)\//i, '/t/p/' + (w || 'w342') + '/'); }
 function cardNode(it) {
   var n = el('div', 'pcw'), ch = it.kind === 'channel', r = Number(it.rating);
   n.innerHTML = '<div class="pc' + (ch ? ' chn' : '') + '"><div class="img"><span class="ini">' + esc(it.name.charAt(0)) + '</span>' + (it.poster ? '<img decoding="async" src="' + esc(thumb(it.poster)) + '" onerror="this.parentNode.removeChild(this)">' : '') + '</div>' +
@@ -415,7 +415,7 @@ function rowsKey(k) {
  * LIBRARY (movies / series) — side categories + header + poster grid
  * ==================================================================== */
 var L = { kind: '', ents: [], sel: 0, sTop: 0, zone: 'list', items: [], total: 0, page: 0, loading: false, tok: 0, gi: 0, gsy: 0, nodes: {}, q: '', cnt: {}, cur: null, title: '', hTok: 0 };
-var LCOLS = 6, LCW = 236, LRH = 346, LVIS = 692, SROWS = 13, SRH = 60;
+var LCOLS = 5, LCW = 288, LRH = 420, LVIS = 692, SROWS = 13, SRH = 60;
 function libEnts(d) {
   var k = L.kind, e = [{ id: 'new', title: t('added'), cat: '', sort: 'added' }, { id: 'all', title: t(k === 'movie' ? 'allMovies' : 'allSeries'), cat: '', sort: 'name' },
     { id: 'cont', title: t('continueW'), st: 1 }, { id: 'seen', title: t('seenW'), st: 1 }, { id: 'fav', title: t('hubFavs'), st: 1 }];
@@ -462,7 +462,7 @@ function libSide() {
   if (L.sTop < 0) L.sTop = 0;
   for (i = L.sTop; i < Math.min(n, L.sTop + SROWS); i++) {
     var e = L.ents[i], c = libCount(e);
-    h += '<div class="sr' + (i === L.sel ? ' cur' : '') + (i === L.sel && L.zone === 'list' ? ' focus' : '') + '"><span class="sn" dir="auto">' + esc(e.title) + '</span><span class="sc">' + esc(c) + '</span></div>';
+    h += '<div data-i="' + i + '" class="sr' + (i === L.sel ? ' cur' : '') + (i === L.sel && L.zone === 'list' ? ' focus' : '') + '"><span class="sn" dir="auto">' + esc(e.title) + '</span><span class="sc">' + esc(c) + '</span></div>';
   }
   box.innerHTML = h; libTabs();
 }
@@ -506,7 +506,7 @@ function libHead() {
 }
 function libCard(it) {
   var n = el('div', 'gc'), r = Number(it.rating);
-  n.innerHTML = '<div class="gp"><span class="ini">' + esc(it.name.charAt(0)) + '</span>' + (it.poster ? '<img decoding="async" src="' + esc(thumb(it.poster)) + '" onerror="this.parentNode.removeChild(this)">' : '') +
+  n.innerHTML = '<div class="gp"><span class="ini">' + esc(it.name.charAt(0)) + '</span>' + (it.poster ? '<img decoding="async" src="' + esc(thumb(it.poster, 'w500')) + '" onerror="this.parentNode.removeChild(this)">' : '') +
     (r > 0 ? '<span class="rt">★ ' + esc(r.toFixed(1)) + '</span>' : '') + (Fav.has(it) ? '<span class="hf">♥</span>' : '') +
     (it.cont && it.pos ? '<div class="pg"><u style="width:' + Math.round(it.pos * 100) + '%"></u></div>' : '') + '</div><div class="gn" dir="auto">' + esc(it.name) + '</div>';
   return n;
@@ -689,7 +689,7 @@ function startVod(ctx, ms) {
       onError: function () { if (tok !== V.tok) return; T.stageMsg('err', t('playErr') + '\n' + t('retryHint')); showVodOsd(true); },
       onEnd: function () { if (tok === V.tok) vodEnded(); },
       onReady: function () { if (tok !== V.tok) return; V.dur = Player.dur; updateVodBar(Player.ms); var tt = $('#vtot'); if (tt) tt.textContent = fmtMs(V.dur); T.Subs.ready(); Quality.load(Player.master || Player.url).then(function () { if (tok === V.tok) refreshVq(); }); }
-    }, { startMs: ms || 0, onTime: function (m) { if (tok === V.tok) onVodTime(m); }, onSub: function (txt, d) { if (tok === V.tok) T.Subs.cue(txt, d); } });
+    }, { vod: true, startMs: ms || 0, onTime: function (m) { if (tok === V.tok) onVodTime(m); }, onSub: function (txt, d) { if (tok === V.tok) T.Subs.cue(txt, d); } });
   });
 }
 /* metadata shown in the infobar: plot, year, rating, genre (loaded on demand when resuming straight from the hub) */
@@ -816,7 +816,7 @@ function showMenu() {
   if (st > 0 && Menu.items[st] && !Menu.items[st].hdr) { var hh = st; while (hh > 0 && !Menu.items[hh - 1].hdr) hh--; if (hh > 0 && st - hh < 3) st = hh - 1; }
   Menu.top = st;
   m.innerHTML = '<div class="pmt">' + esc(t('menuTitle')) + '</div>' + (st > 0 ? '<div class="pmmore">▲</div>' : '<div class="pmmore">&nbsp;</div>') + Menu.items.slice(st, st + VIS).map(function (x, k) {
-    var i = st + k; return x.hdr ? '<div class="pmh">' + esc(x.l) + '</div>' : '<div class="pmi' + (i === Menu.idx ? ' focus' : '') + (x.dis ? ' dis' : '') + '">' + (x.sel ? '<b>✓</b>' : '<b></b>') + '<span>' + esc(x.l) + '</span></div>';
+    var i = st + k; return x.hdr ? '<div class="pmh">' + esc(x.l) + '</div>' : '<div data-i="' + i + '" class="pmi' + (i === Menu.idx ? ' focus' : '') + (x.dis ? ' dis' : '') + '">' + (x.sel ? '<b>✓</b>' : '<b></b>') + '<span>' + esc(x.l) + '</span></div>';
   }).join('') + (st + VIS < n ? '<div class="pmmore">▼</div>' : '');
 }
 function stepMenu(d) {
@@ -854,7 +854,7 @@ function openSettings(pref) {
   function onOff(v) { return v ? t('on') : t('off'); }
   var h = '<div class="brand"><span class="mark"></span><b>Stalker<span>TV</span></b></div><div class="rtitle">' + esc(t('settingsT')) + '</div><div class="sbox" id="sbox"><div class="sin">';
   h += '<div class="sh">' + esc(t('playback')) + '</div>' + row('quality', t('defQuality'), qLabel(Prefs.quality), t('qualNote')) + row('autonext', t('autoNext'), onOff(Prefs.autonext), '') +
-    row('resume', t('resumePlay'), onOff(Prefs.resume), '') + row('fast', t('fastStart'), onOff(Prefs.fast), t('fastNote')) + row('aspect', t('aspect'), aspLabel(Prefs.aspect), t('aspNote')) + row('hist', t('clearHist'), '', '');
+    row('resume', t('resumePlay'), onOff(Prefs.resume), '') + row('fast', t('fastStart'), onOff(Prefs.fast), t('fastNote')) + (T.hasAV ? row('engine', t('engine'), ({ auto: t('engAuto'), html5: 'HTML5', avplay: 'AVPlay' })[T.engineMode()], t('engineNote')) : '') + row('aspect', t('aspect'), aspLabel(Prefs.aspect), t('aspNote')) + row('hist', t('clearHist'), '', '');
   h += '<div class="sh">' + esc(t('subsT')) + '</div>' + row('subs', t('subAuto'), onOff(Prefs.subs), t('subNote')) + row('subLang', t('subTo'), T.Subs.langName(Prefs.subLang), '') + row('subBoth', t('subBoth'), onOff(Prefs.subBoth), '') + row('subSize', t('subSize'), t(Prefs.subSize === 'xl' ? 'sizeXL' : Prefs.subSize === 'l' ? 'sizeL' : 'sizeM'), '');
   h += '<div class="sh">' + esc(t('ui')) + '</div>' + row('lang', t('lang2'), t('lang'), '') + row('perf', t('perf'), onOff(Prefs.perf), t('perfNote'));
   h += '<div class="sh">' + esc(t('conn')) + '</div>' + row('vpn', t('vpnT'), vpnLabel(), t('vpnAbout')) + row('relay', t('relayRow'), '', '') + row('diag', t('diagT'), diagVal(), diagDesc());
@@ -921,6 +921,7 @@ function settingsKey(k) {
   else if (a === 'subSize') { Prefs.subSize = Prefs.subSize === 'm' ? 'l' : Prefs.subSize === 'l' ? 'xl' : 'm'; T.savePrefs(); openSettings(a); }
   else if (a === 'aspect') { Prefs.aspect = ASPK[(ASPK.indexOf(Prefs.aspect) + 1) % ASPK.length]; T.savePrefs(); Player.applyAspect(); openSettings(a); }
   else if (a === 'perf') { Prefs.perf = !Prefs.perf; T.savePrefs(); openSettings(a); }
+  else if (a === 'engine') { Store.set('engine', ({ avplay: 'auto', auto: 'html5', html5: 'avplay' })[T.engineMode()]); Store.set('h5fail_vod', 0); Store.set('h5fail_live', 0); openSettings(a); }
   else if (a === 'autonext' || a === 'resume' || a === 'fast') { Prefs[a] = !Prefs[a]; T.savePrefs(); openSettings(a); }
   else if (a === 'diag') { Store.set('crash', null); Store.set('lastErr', null); openSettings(a); }
   else if (a === 'hist') { Hist.clear(); toast(t('histCleared'), 1600); }
@@ -941,6 +942,69 @@ T.typing = function (kc, ae) {
   return false;
 };
 
+
+/* ======================================================================
+ * TOUCH: a tap goes straight to the thing under the finger (no need to focus it first)
+ * ==================================================================== */
+function up(el, sel, root) { while (el && el !== root && el.nodeType === 1) { if (el.matches && el.matches(sel)) return el; el = el.parentNode; } return null; }
+function idxOf(map, node) { for (var k in map) if (map[k] === node) return Number(k); return -1; }
+T.tapMedia = function (el, x, y) {
+  var sc = S.screen, n, i;
+  if (Menu.open) {
+    n = up(el, '.pmi', null);
+    if (n) { i = Number(n.getAttribute('data-i')); if (Menu.items[i] && !Menu.items[i].dis) { Menu.idx = i; Menu.key('ok'); } return true; }
+    if (!up(el, '#pmenu', null)) { closeMenu(); return true; }
+    return true;
+  }
+  if (sc === 'lib') {
+    if ((n = up(el, '.ltab', null))) { var k = n.getAttribute('data-k'); if (k !== L.kind) { openLib(k); } return true; }
+    if (up(el, '.lsearch', null)) { L.zone = 'search'; libAll(); var q = $('#lq'); if (q) q.focus(); return true; }
+    if ((n = up(el, '.sr', null))) { i = Number(n.getAttribute('data-i')); clearTimeout(libDeb.t); L.zone = 'list'; libSelect(i); libAll(); return true; }
+    if ((n = up(el, '.gc', null))) {
+      i = idxOf(L.nodes, n); if (i < 0) return true;
+      L.gi = i; L.zone = 'grid'; libGrid(); libHead(); if (L.items[i]) openDetail(L.items[i], { from: 'lib' }); return true;
+    }
+    return false;
+  }
+  if (sc === 'rows') {
+    if (up(el, '.rsearch', null)) { R.zone = 'search'; R.render(); var rq = $('#rq'); if (rq) rq.focus(); return true; }
+    if ((n = up(el, '.pcw', null))) {
+      for (var r in R.nodes) { var c = idxOf(R.nodes[r].cards, n); if (c >= 0) { R.r = Number(r); R.c = c; R.zone = 'rows'; R.render(); rowsKey('ok'); return true; } }
+    }
+    return false;
+  }
+  if (sc === 'detail') {
+    if ((n = up(el, '.dbtn', null))) { Dt.zone = 'btns'; Dt.bi = Number(n.getAttribute('data-i')); paintDetail(); detailKey('ok'); return true; }
+    if ((n = up(el, '.schip', null))) { i = Number(n.getAttribute('data-i')); if (i !== Dt.si) { Dt.si = i; Dt.ei = 0; Dt.sy = 0; renderDetail(); } Dt.zone = 'seas'; paintDetail(); return true; }
+    if ((n = up(el, '.ep', null))) { Dt.zone = 'eps'; Dt.ei = Number(n.getAttribute('data-i')); paintDetail(); detailKey('ok'); return true; }
+    return false;
+  }
+  if (sc === 'vod') {
+    if ((n = up(el, '.vbar', null)) && V.dur) {
+      var r2 = n.getBoundingClientRect(), f = (x - r2.left) / Math.max(1, r2.width); if (rtl()) f = 1 - f; f = Math.max(0, Math.min(1, f));
+      var tg = Math.round(f * V.dur); updateVodBar(tg); showVodOsd(true); clearTimeout(V.seekT); V.seekT = setTimeout(function () { Player.seek(tg); V.seekAcc = 0; showVodOsd(); }, 150); return true;
+    }
+    var o = $('#s-vod'); if (!o.classList.contains('show')) { showVodOsd(); return true; }
+    vodKey('ok'); return true;
+  }
+  return false;
+};
+/* a finger swipe: how many steps and which key, per screen */
+T.swipeMedia = function (dir, steps, el) {
+  var sc = S.screen, k, n, r;
+  if (Menu.open) { for (k = 0; k < steps; k++) stepMenu(dir === 'down' ? 1 : -1); showMenu(); return true; }
+  if (sc === 'lib') {
+    if (dir === 'left' || dir === 'right') return true;
+    var side = up(el, '#lside, .sr', null); L.zone = side ? 'list' : 'grid'; if (!side && !L.items.length) return true;
+    for (k = 0; k < steps; k++) libKey(dir); libAll(); return true;
+  }
+  if (sc === 'rows') {
+    n = up(el, '.pcw', null);
+    if ((dir === 'left' || dir === 'right') && n) { for (r in R.nodes) if (idxOf(R.nodes[r].cards, n) >= 0) { R.r = Number(r); break; } }
+    R.zone = 'rows'; for (k = 0; k < steps; k++) rowsKey(dir); return true;
+  }
+  return false;
+};
 T.keys.hub = hubKey; T.keys.rows = rowsKey; T.keys.lib = libKey; T.keys.detail = detailKey; T.keys.vod = vodKey; T.keys.settings = settingsKey;
 T.openHub = openHub; T.openMenu = openMenu; T.openSettings = openSettings;
 window.__media = { R: R, Dt: Dt, V: V, Hist: Hist, Fav: Fav, Pos: Pos, Menu: Menu };

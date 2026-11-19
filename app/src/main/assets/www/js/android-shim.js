@@ -1,3 +1,4 @@
+window.__engineDefault = 'avplay';
 /* Stalker TV (Android build) - runs before the app. Gives the page the same abilities as on the Samsung TV:
  *  - webapis.avplay  -> implemented by the native Media3/ExoPlayer view that sits behind the (transparent) WebView
  *  - XMLHttpRequest  -> routed through the native HTTP client (no CORS, custom headers like Cookie/User-Agent allowed)
@@ -64,19 +65,5 @@ window.__key = function (code) {
   function mk(type) { var e = document.createEvent('Event'); e.initEvent(type, true, true); e.keyCode = code; e.which = code; e.key = ''; return e; }
   (document.activeElement || document).dispatchEvent(mk('keydown')); (document.activeElement || document).dispatchEvent(mk('keyup'));
 };
-var tx = 0, ty = 0, ax = 0, ay = 0, tt = 0, moved = false, STEP = 70;
-document.addEventListener('touchstart', function (e) { var t = e.touches[0]; tx = ax = t.clientX; ty = ay = t.clientY; tt = Date.now(); moved = false; }, { passive: true });
-document.addEventListener('touchmove', function (e) {
-  var t = e.touches[0], dx = t.clientX - ax, dy = t.clientY - ay;
-  if (Math.abs(dx) < STEP && Math.abs(dy) < STEP) return;
-  moved = true; ax = t.clientX; ay = t.clientY;
-  if (Math.abs(dy) >= Math.abs(dx)) window.__key(dy < 0 ? 40 : 38); else window.__key(dx < 0 ? 39 : 37);
-}, { passive: true });
-document.addEventListener('touchend', function (e) {
-  if (moved || Date.now() - tt > 450) return;
-  var el = document.elementFromPoint(tx, ty), f = el && el.closest ? el.closest('.f,[data-act],[data-id],.row,.btn,input') : null;
-  if (f && f.tagName === 'INPUT') return;
-  try { if (f && window.__tv && window.__tv.Nav && window.__tv.Nav.set) window.__tv.Nav.set(f); } catch (e2) {}
-  window.__key(13);
-}, { passive: true });
+/* touch gestures live in touch.js (loaded after the app) */
 })();

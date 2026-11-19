@@ -334,8 +334,14 @@ var Quality = {
 };
 
 /* ---- Player (Samsung AVPlay, with <video> fallback) ---- */
+var hasAV = !!(window.webapis && window.webapis.avplay);
+/* engine: HTML5 <video> first (falls back to AVPlay by itself when the TV cannot play a stream that way), or AVPlay only */
+/* engine mode: 'avplay' (default: hardware plane, embedded subtitles, fastest zapping), 'auto' = AVPlay for live + HTML5 for movies, 'html5' = always <video> (Tizen exposes no embedded subtitles there) */
+function engineMode() { var m = Store.get('engine', window.__engineDefault || 'avplay'); return m === 'html5' || m === 'auto' ? m : 'avplay'; }
+function engineIsAV(vod) { if (!hasAV) return false; var m = engineMode(); return m === 'avplay' || (m === 'auto' && !vod); }
+function applyEngine(vod, off) { var on = engineIsAV(vod); Player.av = on; document.documentElement.classList.toggle('h5', hasAV && !on && !off); }
 var Player = {
-  av: !!(window.webapis && window.webapis.avplay), gen: 0, rect: PREV, active: false,
+  av: hasAV, gen: 0, rect: PREV, active: false,
   h: null, url: '', master: '', variant: '', ms: 0, dur: 0, paused: false, onTime: null,
   setRect: function (r) { this.rect = r; this.applyAspect(); },
   /* screen fit: fit / stretch / zoom(crop) / forced 16:9, 4:3, 21:9 — AVPlay display mode or <video> object-fit */
@@ -353,14 +359,17 @@ var Player = {
     }
   },
   stop: function () {
-    this.gen++; this.active = false; this.onTime = null; this.onSub = null; this.paused = false;
+    if (hasAV) document.documentElement.classList.remove('h5');   // page goes back to the light transparent layer over the AVPlay plane
+    this.gen++; clearTimeout(this._wd); this.active = false; this.onTime = null; this.onSub = null; this.paused = false; this._sk = 0; this._skp = null;
     if (this.av) { try { webapis.avplay.stop(); } catch (e) {} try { webapis.avplay.close(); } catch (e2) {} }
     else { vid.onplaying = vid.onwaiting = vid.onerror = vid.onloadedmetadata = vid.ontimeupdate = vid.onended = null; try { vid.pause(); vid.removeAttribute('src'); vid.load(); } catch (e3) {} }
   },
   play: function (url, h, opts) {
     opts = opts || {};
     var keepTime = opts.onTime || null, keepSub = opts.onSub || null;
-    this.stop(); this.onTime = keepTime; this.onSub = keepSub;
+    this.stop(); applyEngine(opts.vod);
+    if (hasAV && !this.av && Store.get('h5fail_' + (opts.vod ? 'vod' : 'live'), 0) >= 1) { this.av = true; document.documentElement.classList.remove('h5'); }   // this kind of stream already failed in HTML5 on this TV
+    this.onTime = keepTime; this.onSub = keepSub;
     var gen = this.gen, self = this;
     this.h = h; this.master = opts.master || url; this.ms = opts.startMs || 0; this.dur = 0; this.variant = opts.variant || '';
     h.onState('buffering');
@@ -382,8 +391,10 @@ var Player = {
       try {
         var a = webapis.avplay; a.open(url); this.active = true;
         try {
-          a.setBufferingParam('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_SIZE_IN_SECOND', Prefs.fast ? 1 : 4);
-          a.setBufferingParam('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_SIZE_IN_SECOND', Prefs.fast ? 2 : 6);
+          // live: small buffers = fast zapping. Movies / series: buffer far ahead (the player keeps filling it while you watch), so a slow moment on the line or a jump forward does not stall again and again
+          var bp = opts.vod ? (Prefs.fast ? [4, 15] : [8, 30]) : (Prefs.fast ? [1, 2] : [4, 6]);
+          try { a.setBufferingParam('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_SIZE_IN_SECOND', bp[0]); } catch (e1) {}
+          try { a.setBufferingParam('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_SIZE_IN_SECOND', bp[1]); } catch (e2) {}
         } catch (e) {}
         a.setListener({
           onbufferingstart: function () { if (ok()) h.onState('buffering'); },
@@ -404,9 +415,17 @@ var Player = {
         }, function (e) { if (ok()) h.onError(e); });
       } catch (e) { h.onError(e); }
     } else {
-      vid.onplaying = function () { if (ok()) h.onState('playing'); };
+      var kind = opts.vod ? 'vod' : 'live'; self._played = false; clearTimeout(self._wd);
+      function toAV() {
+        if (!ok() || !hasAV || opts._fb) return false; opts._fb = true; clearTimeout(self._wd);
+        Store.set('h5fail_' + kind, Store.get('h5fail_' + kind, 0) + 1);
+        vid.onplaying = vid.onwaiting = vid.onerror = vid.onloadedmetadata = vid.ontimeupdate = vid.onended = null; try { vid.pause(); vid.removeAttribute('src'); vid.load(); } catch (e3) {}
+        self.av = true; document.documentElement.classList.remove('h5'); self._open(self.url, h, opts, gen); return true;
+      }
+      vid.onplaying = function () { if (ok()) { self._played = true; clearTimeout(self._wd); h.onState('playing'); } };
       vid.onwaiting = function () { if (ok()) h.onState('buffering'); };
-      vid.onerror = function () { if (ok()) h.onError(vid.error); };
+      vid.onerror = function () { if (ok() && !toAV()) h.onError(vid.error); };
+      if (hasAV) self._wd = setTimeout(function () { if (ok() && !self._played) toAV(); }, 9000);
       vid.onended = end;
       vid.onloadedmetadata = function () {
         if (!ok()) return; self.dur = (isFinite(vid.duration) ? vid.duration : 0) * 1000;
@@ -423,7 +442,14 @@ var Player = {
   toggle: function () { if (this.paused) this.resume(); else this.pause(); return this.paused; },
   seek: function (ms) {
     var max = this.dur ? this.dur - 1500 : ms; ms = Math.max(0, Math.min(ms, max)); this.ms = ms;
-    if (this.av) { try { webapis.avplay.seekTo(ms); } catch (e) {} } else { try { vid.currentTime = ms / 1000; } catch (e2) {} }
+    if (this.av) {
+      // one seek at a time: AVPlay's seekTo is asynchronous and a second call before the first one finished makes it drop the buffer again (stutter)
+      var self = this;
+      if (self._sk) { self._skp = ms; return; }
+      var tk = self._sk = Date.now() + Math.random(), done = function () { if (self._sk !== tk) return; self._sk = 0; if (self._skp != null) { var n = self._skp; self._skp = null; self.seek(n); } };
+      setTimeout(done, 8000);
+      try { webapis.avplay.seekTo(ms, done, done); } catch (e) { done(); }
+    } else { try { vid.currentTime = ms / 1000; } catch (e2) {} }
   },
   tracks: function (type) {
     var out = [];
@@ -1100,6 +1126,33 @@ function handle(k) {
     if (k === 'ok' && Nav.cur) { var a = Nav.cur.getAttribute('data-act'); if (a === 'retry') openAccount(S.acc); else { S.loadTok++; showAccounts(S.acc.id); } }
   }
 }
+/* ---- TOUCH on the live-channels / full-screen screens (media screens are in media.js) ---- */
+function tIdx(map, node) { for (var k in map) if (map[k] === node) return Number(k); return -1; }
+function tUp(el, sel) { while (el && el.nodeType === 1) { if (el.matches && el.matches(sel)) return el; el = el.parentNode; } return null; }
+function tapLive(el, x, y) {
+  var sc = S.screen, n, i;
+  if (sc === 'full') { showOsd(6000); return true; }
+  if (sc !== 'browse') return false;
+  if ((n = tUp(el, '#catBox .row')) && (i = tIdx(catList.rows, n)) >= 0) { setZone('chan'); if (i !== S.catIdx) applyCat(i); return true; }
+  if ((n = tUp(el, '#chBox .row')) && (i = tIdx(chList.rows, n)) >= 0) {
+    setZone('chan'); chList.setFocus(i); soonNow(); var c = curCh(); if (!c) return true;
+    if (S.playing && S.playing.id === c.id) goFull(); else tune(c, true); return true;
+  }
+  if (tUp(el, '.search') || tUp(el, '#q')) { setZone('search'); var q = $('#q'); if (q) q.focus(); return true; }
+  var ar = app.getBoundingClientRect(), rx = (x - ar.left) / SCALE, ry = (y - ar.top) / SCALE;
+  if (S.playing && rx > 970 && ry < 540) { goFull(); return true; }
+  return false;
+}
+function swipeLive(dir, steps, el) {
+  var sc = S.screen, k;
+  if (sc === 'full') { if (dir === 'up') zap(1); else if (dir === 'down') zap(-1); return true; }
+  if (sc !== 'browse') return false;
+  if (dir === 'left' || dir === 'right') return true;
+  var list = tUp(el, '#catBox') ? catList : chList; if (list === catList) setZone('cat'); else setZone('chan');
+  for (k = 0; k < steps; k++) { if (list === catList) { if (dir === 'up' && S.catIdx > 0) applyCat(S.catIdx - 1); else if (dir === 'down' && S.catIdx < S.cats.length - 1) applyCat(S.catIdx + 1); } else list.setFocus(list.focus + (dir === 'down' ? 1 : -1)); }
+  if (list === chList) soonNow(); return true;
+}
+
 var lastRep = 0;
 document.addEventListener('keydown', function (e) {
   var ae = document.activeElement, typing = ae && ae.tagName === 'INPUT', kc = e.keyCode, k = KEYS[kc];
@@ -1130,7 +1183,7 @@ var T = window.__tv = {
   go: go, toast: toast, Nav: Nav, Player: Player, Prefs: Prefs, savePrefs: savePrefs, Quality: Quality, S: S, hintBar: hintBar, hue: hue,
   showAccounts: showAccounts, saveAccounts: saveAccounts, enterLive: enterLive, loadLive: loadLive, openAccount: openAccount, showRelay: showSettings,
   showForm: showForm, Portal: Portal, Xtream: Xtream, cleanCmd: cleanCmd, stageMsg: stageMsg, SCREENS: SCREENS, errText: errText,
-  getLang: function () { return lang; }, setLang: function (l) { lang = l; Store.set('lang', l); applyLang(); },
+  scale: function () { return SCALE; }, tapLive: tapLive, swipeLive: swipeLive, handleKey: handle, hasAV: hasAV, engineMode: engineMode, engineIsAV: engineIsAV, applyEngine: applyEngine, getLang: function () { return lang; }, setLang: function (l) { lang = l; Store.set('lang', l); applyLang(); },
   loadEpg: function (c) { loadEpg(c); }, keys: {}, menu: { open: false, key: function () {} }, openHub: null, openMenu: null, typing: null
 };
 

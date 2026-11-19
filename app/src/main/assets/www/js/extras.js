@@ -67,6 +67,24 @@ function newTopic() {
   for (i = 0; i < 22; i++) out += chars.charAt((a ? a[i] : Math.floor(Math.random() * 256)) % 36);
   return out;
 }
+/* the TV may fail to reach ntfy.sh directly (old TLS roots / ISP block): try plain http, then the relay, and remember what worked */
+function pollUrls() {
+  var u = Q.base + '/' + Q.topic + '/json?poll=1&since=all', l = [u], rel = T.relayOf ? T.relayOf(T.S.acc || {}) : '';
+  if (/^https:/i.test(Q.base)) l.push(u.replace(/^https:/i, 'http:'));
+  if (rel) l.push(rel + '/?u=' + encodeURIComponent(u) + '&h=' + encodeURIComponent('{}'));
+  
+  return { list: l, orig: 0 };
+}
+function rawGet(url, ms) {
+  return new Promise(function (res, rej) {
+    var x = new XMLHttpRequest(), kind = /relay|\/\?u=/.test(url) ? 'relay' : /^https:/i.test(url) ? 'https' : 'http';
+    function bad(why) { Q.err = kind + ': ' + why; rej(why); }
+    try { x.open('GET', url, true); x.timeout = ms; } catch (e) { bad('open'); return; }
+    x.onload = function () { if (x.status >= 200 && x.status < 300) res(x.responseText); else bad('HTTP ' + x.status); };
+    x.onerror = function () { bad('blocked/TLS'); }; x.ontimeout = function () { bad('timeout'); };
+    try { x.send(); } catch (e2) { bad('send'); }
+  });
+}
 function stopPoll() { clearTimeout(Q.timer); Q.tok++; }
 
 function render() {
@@ -83,14 +101,16 @@ function render() {
 }
 function setNote(txt, warn) { var w = $('#qrwait'); if (!w) return; w.className = 'qrwait' + (warn ? ' warn' : ''); w.lastChild.textContent = txt; }
 function openQr() {
-  stopPoll(); go('qr'); Q.topic = newTopic(); Q.base = ntfyBase(); Q.seen = {}; Q.fails = 0; render();
+  stopPoll(); go('qr'); Q.topic = newTopic(); Q.base = ntfyBase(); Q.seen = {}; Q.fails = 0; Q.vi = 0; render();
   poll(Q.tok);
 }
 function poll(tok) {
   Q.timer = setTimeout(function () {
     if (tok !== Q.tok || S.screen !== 'qr') return;
-    T.xhr(Q.base + '/' + Q.topic + '/json?poll=1&since=all', {}, 6000).then(function (txt) {
+    var pu = pollUrls(), idx = Q.vi || 0; if (idx >= pu.list.length) idx = 0;
+    rawGet(pu.list[idx], 7000).then(function (txt) {
       if (tok !== Q.tok || S.screen !== 'qr') return;
+      Q.vi = idx; Q.good = pu.list[idx];
       if (Q.fails) { Q.fails = 0; setNote(t('qrWait')); }
       var got = [], bad = 0;
       String(txt || '').split('\n').forEach(function (ln) {
@@ -101,7 +121,7 @@ function poll(tok) {
       if (got.length) { received(got); return; }
       if (bad) { setNote(t('qrBadMsg'), true); toast(t('qrBadMsg'), 3200); }
       poll(tok);
-    }, function () { if (tok !== Q.tok || S.screen !== 'qr') return; if (++Q.fails >= 2) setNote(t('qrNoNet'), true); poll(tok); });
+    }, function () { if (tok !== Q.tok || S.screen !== 'qr') return; Q.vi = (idx + 1) % pu.list.length; if (++Q.fails >= pu.list.length + 1) setNote(t('qrNoNet') + ' — ' + Q.err, true); poll(tok); });
   }, 2500);
 }
 function same(a, b) { return a.type === b.type && String(a.portal).toLowerCase() === String(b.portal).toLowerCase() && (a.type === 'xtream' ? a.user === b.user : String(a.mac).toUpperCase() === String(b.mac).toUpperCase()); }

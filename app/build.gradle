@@ -8,8 +8,8 @@ android {
         applicationId 'com.abdo.stalkertv'
         minSdk 21
         targetSdk 34
-        versionCode 330
-        versionName '3.3.0'
+        versionCode 345
+        versionName '3.4.5'
     }
     buildTypes {
         release { minifyEnabled false }
