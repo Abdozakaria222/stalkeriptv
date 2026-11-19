@@ -36,16 +36,35 @@ function pitch(el, axis) {
   else p = up(el, '.pcw') ? 224 : 100;
   return Math.max(26, p * s * 0.8);
 }
-var g = null;
+var g = null, mom = 0;
+function stopMom() { if (mom) { cancelAnimationFrame(mom); mom = 0; } }
+/* pixel scroll of whatever is under the finger; dx/dy in screen px */
+function scrollAt(el, dx, dy, axis) {
+  var k = 1 / sc(), a = dx * k, b = dy * k;
+  if (T.scrollMedia && T.scrollMedia(el, a, b, axis)) return true;
+  if (T.scrollLive && T.scrollLive(el, a, b, axis)) return true;
+  return false;
+}
 doc.addEventListener('touchstart', function (e) {
+  stopMom();
   if (e.touches.length !== 1) { g = null; return; }
-  var t = e.touches[0]; g = { x: t.clientX, y: t.clientY, ax: t.clientX, ay: t.clientY, t: Date.now(), moved: false, axis: '', el: doc.elementFromPoint(t.clientX, t.clientY), accX: 0, accY: 0 };
+  var t = e.touches[0]; g = { x: t.clientX, y: t.clientY, ax: t.clientX, ay: t.clientY, t: Date.now(), moved: false, axis: '', el: doc.elementFromPoint(t.clientX, t.clientY), accX: 0, accY: 0, free: false, vx: 0, vy: 0, lt: Date.now() };
 }, { passive: true });
 doc.addEventListener('touchmove', function (e) {
-  if (!g) return; var t = e.touches[0], dx = t.clientX - g.ax, dy = t.clientY - g.ay;
-  if (!g.moved) { if (Math.abs(t.clientX - g.x) < 14 && Math.abs(t.clientY - g.y) < 14) return; g.moved = true; g.axis = Math.abs(t.clientY - g.y) >= Math.abs(t.clientX - g.x) ? 'y' : 'x'; }
+  if (!g) return; var t = e.touches[0], dx = t.clientX - g.ax, dy = t.clientY - g.ay, now = Date.now();
+  if (!g.moved) {
+    if (Math.abs(t.clientX - g.x) < 12 && Math.abs(t.clientY - g.y) < 12) return;
+    g.moved = true; g.axis = Math.abs(t.clientY - g.y) >= Math.abs(t.clientX - g.x) ? 'y' : 'x';
+    dx = t.clientX - g.x; dy = t.clientY - g.y;
+  }
   g.ax = t.clientX; g.ay = t.clientY;
+  var dt = Math.max(1, now - g.lt); g.lt = now; g.vx = g.vx * 0.6 + (dx / dt) * 0.4; g.vy = g.vy * 0.6 + (dy / dt) * 0.4;
   var screen = S.screen;
+  if (screen !== 'vod' && screen !== 'full' && !T.menu.open) {
+    var ok = g.axis === 'y' ? scrollAt(g.el, 0, dy, 'y') : scrollAt(g.el, dx, 0, 'x');
+    if (ok) { g.free = true; return; }
+  }
+  /* screens without free scrolling: one step per row / card of travel */
   if (g.axis === 'y') {
     g.accY += dy; var p = pitch(g.el, 'y'), n = Math.floor(Math.abs(g.accY) / p);
     if (screen === 'vod' || screen === 'full') { if (n >= 1 && !g.fired) { g.fired = 1; var d = g.accY < 0 ? 'up' : 'down'; if (screen === 'full') { if (T.swipeLive) T.swipeLive(d === 'up' ? 'down' : 'up', 1, g.el); } else key(d === 'up' ? 'up' : 'down'); } return; }
@@ -55,8 +74,19 @@ doc.addEventListener('touchmove', function (e) {
     if (m >= 1) { var dr = g.accX < 0 ? 'right' : 'left'; g.accX -= (g.accX < 0 ? -1 : 1) * m * px; if (screen === 'vod') { dr = dx < 0 ? 'left' : 'right'; for (var i = 0; i < Math.min(m, 3); i++) key(dr); } else if (T.swipeMedia) T.swipeMedia(dr, m, g.el); }
   }
 }, { passive: true });
+function fling(el, axis, v) {
+  var last = performance.now();
+  (function step(now) {
+    var dt = Math.min(40, now - last); last = now; v *= Math.pow(0.94, dt / 16);
+    if (Math.abs(v) < 0.04) { mom = 0; return; }
+    var d = v * dt; if (!(axis === 'y' ? scrollAt(el, 0, d, 'y') : scrollAt(el, d, 0, 'x'))) { mom = 0; return; }
+    mom = requestAnimationFrame(step);
+  })(last);
+}
 doc.addEventListener('touchend', function (e) {
-  var q = g; g = null; if (!q || q.moved || Date.now() - q.t > 700) return;
+  var q = g; g = null; if (!q) return;
+  if (q.moved) { if (q.free && Date.now() - q.lt < 90) { var v = q.axis === 'y' ? q.vy : q.vx; if (Math.abs(v) > 0.25) fling(q.el, q.axis, v * 1.1); } return; }
+  if (Date.now() - q.t > 700) return;
   var el = q.el; if (!el) return;
   if (up(el, 'input')) return;
   e.preventDefault && e.cancelable && e.preventDefault();

@@ -1129,6 +1129,14 @@ function handle(k) {
 /* ---- TOUCH on the live-channels / full-screen screens (media screens are in media.js) ---- */
 function tIdx(map, node) { for (var k in map) if (map[k] === node) return Number(k); return -1; }
 function tUp(el, sel) { while (el && el.nodeType === 1) { if (el.matches && el.matches(sel)) return el; el = el.parentNode; } return null; }
+function scrollLive(el, dx, dy, axis) {
+  if (S.screen !== 'browse') return false;
+  var list = tUp(el, '#catBox') ? catList : tUp(el, '#chBox') ? chList : null; if (!list) return false;
+  if (axis !== 'y') return true;
+  var max = Math.max(0, list.items.length * list.rowH - list.vh);
+  list.scroll = Math.max(0, Math.min(max, list.scroll - dy)); list.render();
+  return true;
+}
 function tapLive(el, x, y) {
   var sc = S.screen, n, i;
   if (sc === 'full') { showOsd(6000); return true; }
@@ -1183,7 +1191,7 @@ var T = window.__tv = {
   go: go, toast: toast, Nav: Nav, Player: Player, Prefs: Prefs, savePrefs: savePrefs, Quality: Quality, S: S, hintBar: hintBar, hue: hue,
   showAccounts: showAccounts, saveAccounts: saveAccounts, enterLive: enterLive, loadLive: loadLive, openAccount: openAccount, showRelay: showSettings,
   showForm: showForm, Portal: Portal, Xtream: Xtream, cleanCmd: cleanCmd, stageMsg: stageMsg, SCREENS: SCREENS, errText: errText,
-  scale: function () { return SCALE; }, tapLive: tapLive, swipeLive: swipeLive, handleKey: handle, hasAV: hasAV, engineMode: engineMode, engineIsAV: engineIsAV, applyEngine: applyEngine, getLang: function () { return lang; }, setLang: function (l) { lang = l; Store.set('lang', l); applyLang(); },
+  scale: function () { return SCALE; }, scrollLive: scrollLive, tapLive: tapLive, swipeLive: swipeLive, handleKey: handle, hasAV: hasAV, engineMode: engineMode, engineIsAV: engineIsAV, applyEngine: applyEngine, getLang: function () { return lang; }, setLang: function (l) { lang = l; Store.set('lang', l); applyLang(); },
   loadEpg: function (c) { loadEpg(c); }, keys: {}, menu: { open: false, key: function () {} }, openHub: null, openMenu: null, typing: null
 };
 

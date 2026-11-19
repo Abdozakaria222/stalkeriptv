@@ -458,7 +458,7 @@ function libTabs() {
 }
 function libSide() {
   var box = $('#lside'); if (!box) return; var n = L.ents.length, i, h = '';
-  if (L.sel < L.sTop) L.sTop = L.sel; else if (L.sel >= L.sTop + SROWS) L.sTop = L.sel - SROWS + 1;
+  if (!L.free) { if (L.sel < L.sTop) L.sTop = L.sel; else if (L.sel >= L.sTop + SROWS) L.sTop = L.sel - SROWS + 1; }
   if (L.sTop < 0) L.sTop = 0;
   for (i = L.sTop; i < Math.min(n, L.sTop + SROWS); i++) {
     var e = L.ents[i], c = libCount(e);
@@ -525,7 +525,7 @@ function libGrid() {
   if (L.items.length - L.gi < LCOLS * 3) libMore();
 }
 function libKey(k) {
-  var z = L.zone, n = L.items.length;
+  L.free = false; var z = L.zone, n = L.items.length;
   if (k === 'back') {
     if (L.q) { $('#lq').value = ''; libSearch(''); return; }
     if (z === 'grid') { L.zone = 'list'; libAll(); return; }
@@ -959,7 +959,7 @@ T.tapMedia = function (el, x, y) {
   if (sc === 'lib') {
     if ((n = up(el, '.ltab', null))) { var k = n.getAttribute('data-k'); if (k !== L.kind) { openLib(k); } return true; }
     if (up(el, '.lsearch', null)) { L.zone = 'search'; libAll(); var q = $('#lq'); if (q) q.focus(); return true; }
-    if ((n = up(el, '.sr', null))) { i = Number(n.getAttribute('data-i')); clearTimeout(libDeb.t); L.zone = 'list'; libSelect(i); libAll(); return true; }
+    if ((n = up(el, '.sr', null))) { i = Number(n.getAttribute('data-i')); clearTimeout(libDeb.t); L.free = false; L.zone = 'list'; libSelect(i); libAll(); return true; }
     if ((n = up(el, '.gc', null))) {
       i = idxOf(L.nodes, n); if (i < 0) return true;
       L.gi = i; L.zone = 'grid'; libGrid(); libHead(); if (L.items[i]) openDetail(L.items[i], { from: 'lib' }); return true;
@@ -1005,6 +1005,55 @@ T.swipeMedia = function (dir, steps, el) {
   }
   return false;
 };
+
+/* finger-follow scrolling (dx, dy in design px). returns true when the thing under the finger is scrollable */
+function clampN(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+T.scrollMedia = function (el, dx, dy, axis) {
+  var sc = S.screen, n, i;
+  if (Menu.open) return false;
+  if (sc === 'detail') {
+    if (!up(el, '.deps,.dsc,.ep', null) || !Dt.seasons || !Dt.seasons[Dt.si]) return false;
+    if (axis !== 'y') return true;
+    var cnt = Dt.seasons[Dt.si].eps.length, max = Math.max(0, cnt * 108 - 372 + 8);
+    Dt.sy = clampN(Dt.sy - dy, 0, max);
+    var lo = Math.ceil(Dt.sy / 108), hi = Math.max(0, Math.floor((Dt.sy + 372 - 100) / 108));
+    if (Dt.ei < lo) Dt.ei = Math.min(lo, cnt - 1); else if (Dt.ei > hi) Dt.ei = hi;
+    paintDetail(); return true;
+  }
+  if (sc === 'lib') {
+    if (axis !== 'y') return true;
+    if (up(el, '#lside, .sr', null)) {
+      L.free = true; L.sAcc = (L.sAcc || 0) - dy / 60; var st = L.sAcc < 0 ? Math.ceil(L.sAcc) : Math.floor(L.sAcc);
+      if (st) { L.sAcc -= st; L.sTop = clampN(L.sTop + st, 0, Math.max(0, L.ents.length - SROWS)); libSide(); }
+      return true;
+    }
+    if (!up(el, '.lgrid, .gc, #lgtk', null) || !L.items.length) return false;
+    var nn = L.items.length, rows = Math.ceil(nn / LCOLS), gmax = Math.max(0, rows * LRH - LVIS + 20);
+    L.gsy = clampN(L.gsy - dy, 0, gmax);
+    var fr = Math.floor(L.gi / LCOLS), l2 = Math.ceil(L.gsy / LRH), h2 = Math.max(0, Math.floor((L.gsy + LVIS) / LRH) - 1);
+    if (fr < l2) fr = l2; else if (fr > h2) fr = h2; fr = Math.min(fr, rows - 1);
+    L.gi = Math.min(nn - 1, fr * LCOLS + L.gi % LCOLS);
+    libGrid(); clearTimeout(scrollMedia.t); scrollMedia.t = setTimeout(function () { if (S.screen === 'lib') libHead(); }, 120); return true;
+  }
+  if (sc === 'rows') {
+    n = up(el, '.pcw', null);
+    if (axis === 'x') {
+      if (!n) return false; var r, c;
+      for (r in R.nodes) if (idxOf(R.nodes[r].cards, n) >= 0) break;
+      r = Number(r); var row = R.rows[r]; if (!row) return false; var cnt2 = row.items.length;
+      var sx = clampN((R.sx[r] || 0) + (rtl() ? dx : -dx), 0, Math.max(0, cnt2 * CW - VW + 40)); R.sx[r] = sx; R.r = r;
+      var lc = Math.ceil(sx / CW), hc = Math.max(0, Math.floor((sx + VW) / CW) - 1); R.c = clampN(R.c, lc, Math.min(hc, cnt2 - 1));
+      if (row.loader && hc >= cnt2 - 8) loadRowPage(row);
+      R.render(); return true;
+    }
+    if (!up(el, '#rowsBox, .rw', null)) return false;
+    R.sy = clampN(R.sy - dy, 0, Math.max(0, R.rows.length * RH - VH));
+    var lr = Math.ceil(R.sy / RH), hr = Math.max(0, Math.floor((R.sy + VH - RH) / RH));
+    R.r = clampN(R.r, Math.min(lr, R.rows.length - 1), hr); clampCol(); R.zone = 'rows'; R.render(); return true;
+  }
+  return false;
+};
+function scrollMedia() {}
 T.keys.hub = hubKey; T.keys.rows = rowsKey; T.keys.lib = libKey; T.keys.detail = detailKey; T.keys.vod = vodKey; T.keys.settings = settingsKey;
 T.openHub = openHub; T.openMenu = openMenu; T.openSettings = openSettings;
 window.__media = { R: R, Dt: Dt, V: V, Hist: Hist, Fav: Fav, Pos: Pos, Menu: Menu };
