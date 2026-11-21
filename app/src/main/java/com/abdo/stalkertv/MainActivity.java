@@ -2,6 +2,7 @@ package com.abdo.stalkertv;
 
 import android.app.Activity;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -29,6 +30,10 @@ import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.ui.AspectRatioFrameLayout;
 import androidx.media3.ui.PlayerView;
+
+import org.videolan.libvlc.LibVLC;
+import org.videolan.libvlc.Media;
+import org.videolan.libvlc.util.VLCVideoLayout;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -64,13 +69,25 @@ public class MainActivity extends Activity {
     private final List<Tracks.Group> audioG = new ArrayList<>();
     private final List<Tracks.Group> textG = new ArrayList<>();
 
+    /* VLC built into the app (libVLC). Used when the app's engine setting is VLC; ExoPlayer otherwise or when VLC cannot open a stream */
+    private static final String UA = "Mozilla/5.0 (Linux; Android 10; TV) AppleWebKit/537.36 StalkerTV/3";
+    private VLCVideoLayout vlcView;
+    private LibVLC libVlc;
+    private org.videolan.libvlc.MediaPlayer vlc;
+    private boolean vlcAttached = false, wantVlc = true, usingVlc = false, vlcBuf = false, vlcFailed = false;
+    private String curUrl = null, resizeMode = "fit";
+    private final List<Integer> vAudioIds = new ArrayList<>();
+    private final List<Integer> vSpuIds = new ArrayList<>();
+
     private final ExecutorService pool = Executors.newFixedThreadPool(4);
     private final ConcurrentHashMap<Integer, String> bodies = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, HttpURLConnection> conns = new ConcurrentHashMap<>();
 
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
-            if (player != null && prepared && player.isPlaying()) {
+            if (usingVlc) {
+                if (vlc != null && prepared && vlc.isPlaying()) js("window.__avp&&__avp.ev('time'," + vlc.getTime() + ")");
+            } else if (player != null && prepared && player.isPlaying()) {
                 js("window.__avp&&__avp.ev('time'," + player.getCurrentPosition() + ")");
             }
             ui.postDelayed(this, 500);
@@ -85,6 +102,8 @@ public class MainActivity extends Activity {
         web = (WebView) findViewById(R.id.web);
         pv = (PlayerView) findViewById(R.id.player);
         pv.setVisibility(View.INVISIBLE);
+        vlcView = (VLCVideoLayout) findViewById(R.id.vlc);
+        vlcView.setVisibility(View.INVISIBLE);
         if (pv.getSubtitleView() != null) pv.getSubtitleView().setVisibility(View.GONE);
 
         WebSettings s = web.getSettings();
@@ -120,19 +139,23 @@ public class MainActivity extends Activity {
 
     @Override protected void onPause() {
         super.onPause();
-        if (player != null) { wasPlaying = player.getPlayWhenReady(); player.setPlayWhenReady(false); }
+        if (usingVlc && vlc != null) { wasPlaying = vlc.isPlaying(); if (wasPlaying) vlc.pause(); }
+        else if (player != null) { wasPlaying = player.getPlayWhenReady(); player.setPlayWhenReady(false); }
         web.onPause();
     }
 
     @Override protected void onResume() {
         super.onResume();
         web.onResume();
-        if (player != null && wasPlaying) player.setPlayWhenReady(true);
+        if (usingVlc && vlc != null) { if (wasPlaying) vlc.play(); }
+        else if (player != null && wasPlaying) player.setPlayWhenReady(true);
     }
 
     @Override protected void onDestroy() {
         ui.removeCallbacks(ticker);
         releasePlayer();
+        if (vlc != null) { try { vlc.setEventListener(null); if (vlcAttached) vlc.detachViews(); vlc.release(); } catch (Throwable ignored) { } vlc = null; }
+        if (libVlc != null) { try { libVlc.release(); } catch (Throwable ignored) { } libVlc = null; }
         pool.shutdownNow();
         super.onDestroy();
     }
@@ -170,6 +193,9 @@ public class MainActivity extends Activity {
 
     private void releasePlayer() {
         if (player != null) { try { player.release(); } catch (Exception ignored) { } player = null; }
+        if (vlc != null && usingVlc) { try { vlc.stop(); } catch (Throwable ignored) { } }
+        usingVlc = false; vlcBuf = false; vAudioIds.clear(); vSpuIds.clear();
+        if (vlcView != null) vlcView.setVisibility(View.INVISIBLE);
         prepared = false; dur = 0; tracksJson = "[]";
         audioG.clear(); textG.clear();
         if (pv != null) { pv.setPlayer(null); pv.setVisibility(View.INVISIBLE); }
@@ -197,55 +223,193 @@ public class MainActivity extends Activity {
         tracksJson = arr.toString();
     }
 
+    /* ======================= VLC ======================= */
+    private boolean ensureVlc() {
+        if (vlc != null) return true;
+        if (vlcFailed) return false;
+        try {
+            ArrayList<String> o = new ArrayList<>();
+            o.add("--http-reconnect");
+            o.add("--sub-language=ara,eng");
+            o.add("--no-stats");
+            o.add("--no-osd");
+            libVlc = new LibVLC(this, o);
+            vlc = new org.videolan.libvlc.MediaPlayer(libVlc);
+            vlc.setEventListener(vlcEvents);
+            return true;
+        } catch (Throwable t) {                     // no native VLC for this processor: ExoPlayer only
+            vlcFailed = true; vlc = null; libVlc = null;
+            return false;
+        }
+    }
+
+    private static boolean isLive(String u) {
+        String l = u.toLowerCase();
+        return l.contains("/live/") || ((l.contains(".m3u8") || l.endsWith(".ts")) && !l.contains("/movie/") && !l.contains("/series/"));
+    }
+
+    private boolean openVlc(String url) {
+        if (!ensureVlc()) return false;
+        try {
+            if (!vlcAttached) { vlc.attachViews(vlcView, null, true, false); vlcAttached = true; }
+            Media m = new Media(libVlc, Uri.parse(url));
+            m.setHWDecoderEnabled(true, false);
+            m.addOption(":network-caching=" + (isLive(url) ? 3000 : 1500));
+            m.addOption(":http-user-agent=" + UA);
+            m.addOption(":http-reconnect");
+            vlc.setMedia(m);
+            m.release();
+            prepared = false; dur = 0; tracksJson = "[]"; vlcBuf = false;
+            usingVlc = true;
+            applyVlcScale();
+            pv.setVisibility(View.INVISIBLE);
+            vlcView.setVisibility(View.VISIBLE);
+            return true;
+        } catch (Throwable t) {
+            usingVlc = false;
+            return false;
+        }
+    }
+
+    private void applyVlcScale() {
+        if (vlc == null) return;
+        try {
+            vlc.setVideoScale("fill".equals(resizeMode) ? org.videolan.libvlc.MediaPlayer.ScaleType.SURFACE_FILL
+                    : "zoom".equals(resizeMode) ? org.videolan.libvlc.MediaPlayer.ScaleType.SURFACE_FIT_SCREEN
+                    : org.videolan.libvlc.MediaPlayer.ScaleType.SURFACE_BEST_FIT);
+        } catch (Throwable ignored) { }
+    }
+
+    private void addVlcTracks(JSONArray arr, String type, org.videolan.libvlc.MediaPlayer.TrackDescription[] list, List<Integer> ids) throws Exception {
+        ids.clear();
+        if (list == null) return;
+        for (org.videolan.libvlc.MediaPlayer.TrackDescription d : list) {
+            if (d.id < 0) continue;                  // "Disable"
+            JSONObject o = new JSONObject();
+            o.put("type", type); o.put("index", ids.size());
+            o.put("extra_info", new JSONObject().put("language", d.name == null ? "" : d.name).toString());
+            arr.put(o); ids.add(d.id);
+        }
+    }
+
+    private void vlcTracks() {
+        if (vlc == null) return;
+        try {
+            JSONArray arr = new JSONArray();
+            addVlcTracks(arr, "AUDIO", vlc.getAudioTracks(), vAudioIds);
+            addVlcTracks(arr, "TEXT", vlc.getSpuTracks(), vSpuIds);
+            tracksJson = arr.toString();
+        } catch (Throwable ignored) { }
+    }
+
+    /* VLC could not open the stream before it started: ExoPlayer takes over the same stream */
+    private void vlcFallback() {
+        String u = curUrl;
+        try { vlc.stop(); } catch (Throwable ignored) { }
+        usingVlc = false; vlcView.setVisibility(View.INVISIBLE);
+        if (u == null) return;
+        openExo(u);
+        js("__avp.ev('engine','exo','fb')");
+        if (player != null) player.prepare();
+    }
+
+    private final org.videolan.libvlc.MediaPlayer.EventListener vlcEvents = new org.videolan.libvlc.MediaPlayer.EventListener() {
+        @Override public void onEvent(org.videolan.libvlc.MediaPlayer.Event ev) {
+            if (!usingVlc || vlc == null) return;
+            switch (ev.type) {
+                case org.videolan.libvlc.MediaPlayer.Event.Playing: {
+                    long l = vlc.getLength(); if (l > 0) dur = l;
+                    vlcTracks();
+                    if (!prepared) { prepared = true; js("__avp.ev('prepared')"); }
+                    else if (vlcBuf) { vlcBuf = false; js("__avp.ev('bufend')"); }
+                    break;
+                }
+                case org.videolan.libvlc.MediaPlayer.Event.Buffering: {
+                    if (!prepared) break;
+                    boolean b = ev.getBuffering() < 100f;
+                    if (b != vlcBuf) { vlcBuf = b; js(b ? "__avp.ev('bufstart')" : "__avp.ev('bufend')"); }
+                    break;
+                }
+                case org.videolan.libvlc.MediaPlayer.Event.LengthChanged: { long l = ev.getLengthChanged(); if (l > 0) dur = l; break; }
+                case org.videolan.libvlc.MediaPlayer.Event.ESAdded:
+                case org.videolan.libvlc.MediaPlayer.Event.ESDeleted:
+                case org.videolan.libvlc.MediaPlayer.Event.ESSelected: vlcTracks(); break;
+                case org.videolan.libvlc.MediaPlayer.Event.EndReached: js("__avp.ev('completed')"); break;
+                case org.videolan.libvlc.MediaPlayer.Event.EncounteredError:
+                    if (!prepared) vlcFallback(); else js("__avp.ev('error','VLC: playback error')");
+                    break;
+                default: break;
+            }
+        }
+    };
+
+    private void openExo(String url) {
+        DefaultHttpDataSource.Factory ds = new DefaultHttpDataSource.Factory()
+                .setUserAgent(UA)
+                .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(15000).setReadTimeoutMs(20000);
+        DefaultLoadControl lc = new DefaultLoadControl.Builder().setBufferDurationsMs(5000, 50000, 1000, 2500).build();
+        player = new ExoPlayer.Builder(MainActivity.this)
+                .setRenderersFactory(new DefaultRenderersFactory(MainActivity.this).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON))
+                .setMediaSourceFactory(new DefaultMediaSourceFactory(ds))
+                .setLoadControl(lc).build();
+        player.addListener(new Player.Listener() {
+            @Override public void onPlaybackStateChanged(int st) {
+                if (st == Player.STATE_READY) {
+                    long d = player == null ? 0 : player.getDuration();
+                    dur = d == C.TIME_UNSET ? 0 : d;
+                    if (!prepared) { prepared = true; js("__avp.ev('prepared')"); } else js("__avp.ev('bufend')");
+                } else if (st == Player.STATE_BUFFERING) { if (prepared) js("__avp.ev('bufstart')"); }
+                else if (st == Player.STATE_ENDED) js("__avp.ev('completed')");
+            }
+            @Override public void onPlayerError(PlaybackException err) {
+                js("__avp.ev('error'," + JSONObject.quote(err.getErrorCodeName() + ": " + String.valueOf(err.getMessage())) + ")");
+            }
+            @Override public void onTracksChanged(Tracks t) { rebuildTracks(t); }
+            @Override public void onCues(CueGroup g) {
+                StringBuilder sb = new StringBuilder();
+                for (Cue c : g.cues) { if (c.text != null) { if (sb.length() > 0) sb.append('\n'); sb.append(c.text.toString()); } }
+                js("__avp.ev('sub',4000," + JSONObject.quote(sb.toString()) + ")");
+            }
+        });
+        pv.setPlayer(player);
+        pv.setResizeMode("fill".equals(resizeMode) ? AspectRatioFrameLayout.RESIZE_MODE_FILL : "zoom".equals(resizeMode) ? AspectRatioFrameLayout.RESIZE_MODE_ZOOM : AspectRatioFrameLayout.RESIZE_MODE_FIT);
+        pv.setVisibility(View.VISIBLE);
+        if (pv.getSubtitleView() != null) pv.getSubtitleView().setVisibility(silentSub ? View.GONE : View.VISIBLE);
+        player.setMediaItem(MediaItem.fromUri(url));
+        player.setPlayWhenReady(false);
+    }
+
     /* ======================= AVPlay-like player ======================= */
     private class PlayerApi {
+        @JavascriptInterface public void setEngine(final String e) { wantVlc = !"exo".equals(e); }
         @JavascriptInterface public void open(final String url) {
             ui.post(new Runnable() { @Override public void run() {
                 releasePlayer();
-                DefaultHttpDataSource.Factory ds = new DefaultHttpDataSource.Factory()
-                        .setUserAgent("Mozilla/5.0 (Linux; Android 10; TV) AppleWebKit/537.36 StalkerTV/3")
-                        .setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(15000).setReadTimeoutMs(20000);
-                DefaultLoadControl lc = new DefaultLoadControl.Builder().setBufferDurationsMs(5000, 50000, 1000, 2500).build();
-                player = new ExoPlayer.Builder(MainActivity.this)
-                        .setRenderersFactory(new DefaultRenderersFactory(MainActivity.this).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON))
-                        .setMediaSourceFactory(new DefaultMediaSourceFactory(ds))
-                        .setLoadControl(lc).build();
-                player.addListener(new Player.Listener() {
-                    @Override public void onPlaybackStateChanged(int st) {
-                        if (st == Player.STATE_READY) {
-                            long d = player == null ? 0 : player.getDuration();
-                            dur = d == C.TIME_UNSET ? 0 : d;
-                            if (!prepared) { prepared = true; js("__avp.ev('prepared')"); } else js("__avp.ev('bufend')");
-                        } else if (st == Player.STATE_BUFFERING) { if (prepared) js("__avp.ev('bufstart')"); }
-                        else if (st == Player.STATE_ENDED) js("__avp.ev('completed')");
-                    }
-                    @Override public void onPlayerError(PlaybackException err) {
-                        js("__avp.ev('error'," + JSONObject.quote(err.getErrorCodeName() + ": " + String.valueOf(err.getMessage())) + ")");
-                    }
-                    @Override public void onTracksChanged(Tracks t) { rebuildTracks(t); }
-                    @Override public void onCues(CueGroup g) {
-                        StringBuilder sb = new StringBuilder();
-                        for (Cue c : g.cues) { if (c.text != null) { if (sb.length() > 0) sb.append('\n'); sb.append(c.text.toString()); } }
-                        js("__avp.ev('sub',4000," + JSONObject.quote(sb.toString()) + ")");
-                    }
-                });
-                pv.setPlayer(player);
-                pv.setVisibility(View.VISIBLE);
-                if (pv.getSubtitleView() != null) pv.getSubtitleView().setVisibility(silentSub ? View.GONE : View.VISIBLE);
-                player.setMediaItem(MediaItem.fromUri(url));
-                player.setPlayWhenReady(false);
+                curUrl = url;
+                if (wantVlc && openVlc(url)) { js("__avp.ev('engine','vlc')"); return; }
+                openExo(url);
+                js("__avp.ev('engine','exo')");
             } });
         }
-        @JavascriptInterface public void prepare() { ui.post(new Runnable() { @Override public void run() { if (player != null) player.prepare(); } }); }
-        @JavascriptInterface public void play() { ui.post(new Runnable() { @Override public void run() { if (player != null) player.setPlayWhenReady(true); } }); }
-        @JavascriptInterface public void pause() { ui.post(new Runnable() { @Override public void run() { if (player != null) player.setPlayWhenReady(false); } }); }
-        @JavascriptInterface public void stop() { ui.post(new Runnable() { @Override public void run() { if (player != null) player.stop(); } }); }
+        @JavascriptInterface public void prepare() { ui.post(new Runnable() { @Override public void run() { if (usingVlc) { if (vlc != null) vlc.play(); } else if (player != null) player.prepare(); } }); }
+        @JavascriptInterface public void play() { ui.post(new Runnable() { @Override public void run() { if (usingVlc) { if (vlc != null && !vlc.isPlaying()) vlc.play(); } else if (player != null) player.setPlayWhenReady(true); } }); }
+        @JavascriptInterface public void pause() { ui.post(new Runnable() { @Override public void run() { if (usingVlc) { if (vlc != null && vlc.isPlaying()) vlc.pause(); } else if (player != null) player.setPlayWhenReady(false); } }); }
+        @JavascriptInterface public void stop() { ui.post(new Runnable() { @Override public void run() { if (usingVlc) { if (vlc != null) vlc.stop(); } else if (player != null) player.stop(); } }); }
         @JavascriptInterface public void close() { ui.post(new Runnable() { @Override public void run() { releasePlayer(); } }); }
-        @JavascriptInterface public void seek(final double ms) { ui.post(new Runnable() { @Override public void run() { if (player != null) player.seekTo((long) ms); } }); }
+        @JavascriptInterface public void seek(final double ms) { ui.post(new Runnable() { @Override public void run() { if (usingVlc) { if (vlc != null) vlc.setTime((long) ms); } else if (player != null) player.seekTo((long) ms); } }); }
+        @JavascriptInterface public void spuDelay(final double ms) { ui.post(new Runnable() { @Override public void run() { if (usingVlc && vlc != null) vlc.setSpuDelay((long) (ms * 1000)); } }); }
+        @JavascriptInterface public void spuOff() { ui.post(new Runnable() { @Override public void run() { if (usingVlc && vlc != null) vlc.setSpuTrack(-1); } }); }
         @JavascriptInterface public double duration() { return (double) dur; }
         @JavascriptInterface public String tracks() { return tracksJson; }
         @JavascriptInterface public void selectTrack(final String type, final int idx) {
             ui.post(new Runnable() { @Override public void run() {
+                if (usingVlc) {
+                    if (vlc == null) return;
+                    List<Integer> ids = "AUDIO".equals(type) ? vAudioIds : vSpuIds;
+                    if (idx < 0 || idx >= ids.size()) return;
+                    if ("AUDIO".equals(type)) vlc.setAudioTrack(ids.get(idx)); else vlc.setSpuTrack(ids.get(idx));
+                    return;
+                }
                 if (player == null) return;
                 boolean audio = "AUDIO".equals(type);
                 List<Tracks.Group> list = audio ? audioG : textG;
@@ -260,12 +424,15 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void silentSub(final boolean silent) {
             ui.post(new Runnable() { @Override public void run() {
                 silentSub = silent;
+                if (usingVlc) return;
                 if (pv.getSubtitleView() != null) pv.getSubtitleView().setVisibility(silent ? View.GONE : View.VISIBLE);
             } });
         }
         @JavascriptInterface public void setResize(final String mode) {
             ui.post(new Runnable() { @Override public void run() {
+                resizeMode = mode == null ? "fit" : mode;
                 pv.setResizeMode("fill".equals(mode) ? AspectRatioFrameLayout.RESIZE_MODE_FILL : "zoom".equals(mode) ? AspectRatioFrameLayout.RESIZE_MODE_ZOOM : AspectRatioFrameLayout.RESIZE_MODE_FIT);
+                if (usingVlc) applyVlcScale();
             } });
         }
         @JavascriptInterface public void setRect(final double l, final double t, final double w, final double h) {
@@ -273,6 +440,9 @@ public class MainActivity extends Activity {
                 FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(Math.max(1, Math.round((float) (w * density))), Math.max(1, Math.round((float) (h * density))));
                 lp.leftMargin = Math.round((float) (l * density)); lp.topMargin = Math.round((float) (t * density));
                 pv.setLayoutParams(lp);
+                FrameLayout.LayoutParams lv = new FrameLayout.LayoutParams(lp.width, lp.height);
+                lv.leftMargin = lp.leftMargin; lv.topMargin = lp.topMargin;
+                vlcView.setLayoutParams(lv);
             } });
         }
         @JavascriptInterface public void exit() { ui.post(new Runnable() { @Override public void run() { finish(); } }); }

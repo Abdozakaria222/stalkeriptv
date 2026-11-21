@@ -7,12 +7,14 @@ var T = window.__tv, t = T.t, Store = T.Store, Prefs = T.Prefs, Player = T.Playe
 var AR = {
   subsT: 'الترجمة', subNative: 'ترجمة التلفزيون الأصلية', subTracks: 'مسارات', subCues: 'وصلت', subAuto: 'ترجمة تلقائية', subTo: 'لغة الترجمة', subBoth: 'عرض النص الأصلي مع الترجمة', subSize: 'حجم الترجمة', subNone: 'لا توجد ترجمة داخل هذا الملف',
   subOffItem: 'إيقاف الترجمة', subFail: 'تعذّرت الترجمة — يتم عرض النص الأصلي', subNote: 'تترجم نص الترجمة الموجود داخل الفيلم تلقائياً (لا تعرف الصوت). تحتاج اتصالاً بالإنترنت.',
-  sizeM: 'متوسط', sizeL: 'كبير', sizeXL: 'كبير جداً', subTrack: 'مسار الترجمة', origLang: 'الأصلية'
+  sizeM: 'متوسط', sizeL: 'كبير', sizeXL: 'كبير جداً', subTrack: 'مسار الترجمة', origLang: 'الأصلية',
+  subTiming: 'توقيت الترجمة', subEarlier: 'أبكر نص ثانية', subLater: 'أتأخر نص ثانية', subResetT: 'رجّع التوقيت الأصلي'
 };
 var EN = {
   subsT: 'Subtitles', subNative: 'TV native subtitles', subTracks: 'tracks', subCues: 'cues', subAuto: 'Auto-translate', subTo: 'Translate to', subBoth: 'Show original text too', subSize: 'Subtitle size', subNone: 'This file has no subtitle track',
   subOffItem: 'Subtitles off', subFail: 'Translation failed — showing original text', subNote: 'Translates the subtitle text carried inside the movie (it cannot hear the audio). Needs internet.',
-  sizeM: 'Medium', sizeL: 'Large', sizeXL: 'Extra large', subTrack: 'Subtitle track', origLang: 'Original'
+  sizeM: 'Medium', sizeL: 'Large', sizeXL: 'Extra large', subTrack: 'Subtitle track', origLang: 'Original',
+  subTiming: 'Subtitle timing', subEarlier: 'Half a second earlier', subLater: 'Half a second later', subResetT: 'Back to the original timing'
 };
 (function () { var k; for (k in AR) T.I18N.ar[k] = AR[k]; for (k in EN) T.I18N.en[k] = EN[k]; })();
 
@@ -28,7 +30,7 @@ var SIZES = { m: 40, l: 50, xl: 62 };
 var DEF_EP = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl={tl}&dt=t&q={q}';
 var Subs = {
   LANGS: LANGS, langName: langName, SIZES: SIZES,
-  gen: 0, rg: 0, cues: 0, native: false, cache: {}, tracks: [], sel: -1, active: false, fails: 0, warned: false, hideT: 0, slowT: 0, el: null, via: '',
+  gen: 0, rg: 0, cues: 0, native: false, offset: 0, lag: 0, cache: {}, tracks: [], sel: -1, active: false, fails: 0, warned: false, hideT: 0, slowT: 0, el: null, via: '',
   /* ---------- overlay ---------- */
   mount: function () { if (!this.el) this.el = T.$('#subs'); return this.el; },
   applyStyle: function () { var e = this.mount(); if (e) e.style.fontSize = (SIZES[Prefs.subSize] || 40) + 'px'; },
@@ -40,7 +42,7 @@ var Subs = {
   },
   clear: function () { clearTimeout(this.hideT); clearTimeout(this.slowT); this.draw(''); },
   /* ---------- lifecycle ---------- */
-  reset: function () { this.gen++; this.rg++; this.cues = 0; this.native = false; this.clear(); this.tracks = []; this.sel = -1; this.active = false; this.fails = 0; this.warned = false; },
+  reset: function () { this.gen++; this.rg++; this.offset = 0; this.lag = 0; this.cues = 0; this.native = false; this.clear(); this.tracks = []; this.sel = -1; this.active = false; this.fails = 0; this.warned = false; },
   stop: function () { this.reset(); },
   /* called when playback is ready: finds embedded subtitle tracks and picks the best one */
   ready: function (n) {
@@ -74,8 +76,22 @@ var Subs = {
   },
   off: function () { this.active = false; this.clear(); this.gen++; Prefs.subs = false; T.savePrefs(); this.setNative(true, true); },
   on: function () { Prefs.subs = true; T.savePrefs(); this.ready(); },
+  /* ---------- timing: + = later, - = earlier (ms). The player moves its own subtitles when it can
+   *  (AVPlay setSubtitlePosition / VLC); otherwise later-only is done here by holding each cue back ---------- */
+  fmtOff: function () { var v = this.offset / 1000; return (v > 0 ? '+' : '') + v.toFixed(Math.abs(this.offset) % 500 ? 2 : 1) + 's'; },
+  shift: function (d) {
+    this.offset = d === 0 ? 0 : Math.max(-30000, Math.min(30000, this.offset + d));
+    this.applyOffset();
+    T.toast(t('subTiming') + ': ' + this.fmtOff(), 1400);
+  },
+  applyOffset: function () {
+    var done = false;
+    if (Player.av) { try { webapis.avplay.setSubtitlePosition(this.offset); done = true; } catch (e) {} }
+    this.lag = done ? 0 : Math.max(0, this.offset);
+  },
   /* ---------- cue handling (one cue at a time) ---------- */
-  cue: function (text, dur) {
+  cue: function (text, dur, held) {
+    if (!held && this.lag > 0) { var me = this, rg = this.rg; setTimeout(function () { if (rg === me.rg) me.cue(text, dur, true); }, this.lag); return; }
     var self = this; text = this.norm(text); this.gen++; var g = this.gen; if (text) this.cues++;
     clearTimeout(this.hideT); clearTimeout(this.slowT);
     if (!text) { this.draw(''); return; }
@@ -123,6 +139,8 @@ var Subs = {
     it.push({ l: this.diag(), dis: true });
     it.push({ l: t('subNative') + ': ' + (this.native ? t('on') : t('off')), subNative: 1, sel: this.native });
     it.push({ l: t('subAuto') + ': ' + (Prefs.subs ? t('on') : t('off')), subToggle: 1, sel: Prefs.subs });
+    it.push({ l: t('subTiming') + ': ' + this.fmtOff(), dis: true }, { l: '◀  ' + t('subEarlier'), subShift: -500 }, { l: t('subLater') + '  ▶', subShift: 500 });
+    if (this.offset) it.push({ l: t('subResetT'), subShift: 0 });
     if (!this.tracks.length) it.push({ l: t('subNone'), dis: true });
     else { it.push({ hdr: true, l: t('subTrack') }); this.tracks.forEach(function (x) { it.push({ l: (x.lang ? langName(x.lang) : x.label) + (x.lang === Prefs.subLang ? ' (' + t('origLang') + ')' : ''), subTrack: x, sel: self.active && self.sel === x.index }); }); }
     it.push({ hdr: true, l: t('subTo') });
@@ -130,6 +148,7 @@ var Subs = {
     return it;
   },
   menuAct: function (x) {
+    if (x.subShift !== undefined) { this.shift(x.subShift); return 'keep'; }
     if (x.subNative) { this.setNative(!this.native); return true; }
     if (x.subToggle) { if (Prefs.subs) this.off(); else this.on(); return true; }
     if (x.subLang) { Prefs.subLang = x.subLang; Prefs.subs = true; T.savePrefs(); this.gen++; this.clear(); if (!this.active) this.ready(); T.toast(t('subTo') + ': ' + x.l, 1600); return true; }

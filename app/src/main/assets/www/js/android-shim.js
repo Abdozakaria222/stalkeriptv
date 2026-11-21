@@ -1,6 +1,6 @@
 window.__engineDefault = 'avplay';
 /* Stalker TV (Android build) - runs before the app. Gives the page the same abilities as on the Samsung TV:
- *  - webapis.avplay  -> implemented by the native Media3/ExoPlayer view that sits behind the (transparent) WebView
+ *  - webapis.avplay  -> implemented by the native player (VLC built into the app, or Media3/ExoPlayer) that sits behind the (transparent) WebView
  *  - XMLHttpRequest  -> routed through the native HTTP client (no CORS, custom headers like Cookie/User-Agent allowed)
  *  - touch / back / remote keys -> translated to the key events the app already understands */
 (function () {
@@ -42,9 +42,13 @@ window.__avp = { ev: function (n, a, b) {
   else if (n === 'completed') { if (L.onstreamcompleted) L.onstreamcompleted(); }
   else if (n === 'time') { if (L.oncurrentplaytime) L.oncurrentplaytime(a); }
   else if (n === 'sub') { if (L.onsubtitlechange) L.onsubtitlechange(a, b); }
+  else if (n === 'engine') { window.__aeng = a; if (b === 'fb' && window.__tv && window.__tv.toast) window.__tv.toast('VLC → ExoPlayer', 2500); }
 } };
 window.webapis = { avplay: {
-  open: function (u) { P.pending = false; AP.open(String(u)); },
+  open: function (u) {
+    P.pending = false; var e = 'vlc'; try { e = JSON.parse(localStorage.getItem('aengine') || '"vlc"'); } catch (x) {}
+    AP.setEngine(e === 'exo' ? 'exo' : 'vlc'); AP.open(String(u));
+  },
   setListener: function (o) { L = o || {}; },
   setBufferingParam: function () {},
   setDisplayRect: function (x, y, w, h) { rect = [x, y, w, h]; push(); },
@@ -56,7 +60,8 @@ window.webapis = { avplay: {
   suspend: function () {}, restore: function () {},
   getTotalTrackInfo: function () { try { return JSON.parse(AP.tracks()); } catch (e) { return []; } },
   setSelectTrack: function (type, idx) { AP.selectTrack(String(type), idx | 0); },
-  setSilentSubtitle: function (b) { AP.silentSub(!!b); }
+  setSilentSubtitle: function (b) { AP.silentSub(!!b); },
+  setSubtitlePosition: function (ms) { if (window.__aeng === 'vlc') { AP.spuDelay(+ms || 0); return; } throw new Error('NotSupportedError'); }
 } };
 window.tizen = { application: { getCurrentApplication: function () { return { exit: function () { AP.exit(); } }; } } };
 

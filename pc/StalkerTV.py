@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 FROZEN = getattr(sys, 'frozen', False)          # True when packed as StalkerTV.exe (PyInstaller)
 HERE = os.path.dirname(sys.executable) if FROZEN else os.path.dirname(os.path.abspath(__file__))
 APP = os.path.join(getattr(sys, '_MEIPASS', HERE), 'app') if FROZEN else os.path.join(HERE, 'app')
-VERSION = '3.4.8-pc'
+VERSION = '3.5.0-pc'
 if sys.stdout is None or sys.stderr is None:    # windowless exe (no console): keep prints from crashing, log to a file instead
     try:
         _lf = open(os.path.join(HERE, 'StalkerTV.log'), 'w', encoding='utf-8', buffering=1)

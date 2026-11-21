@@ -19,7 +19,9 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Build
-        run: gradle assembleDebug --no-daemon
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
       - uses: actions/upload-artifact@v4
         with:
           name: StalkerTV-apk
@@ -30,3 +32,10 @@ jobs:
           cd /tmp/pub && git init -q -b apk-build && git config user.name actions && git config user.email actions@users.noreply.github.com
           git add StalkerTV.apk && git commit -q -m "APK for ${GITHUB_SHA}"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" apk-build
+      - name: Publish the build log when the build fails
+        if: failure()
+        run: |
+          mkdir -p /tmp/log && tail -c 400000 build.log > /tmp/log/build.log 2>/dev/null || echo "no log" > /tmp/log/build.log
+          cd /tmp/log && git init -q -b apk-build-log && git config user.name actions && git config user.email actions@users.noreply.github.com
+          git add build.log && git commit -q -m "APK build log for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" apk-build-log

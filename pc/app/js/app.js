@@ -337,7 +337,7 @@ var Quality = {
 var hasAV = !!(window.webapis && window.webapis.avplay);
 /* engine: HTML5 <video> first (falls back to AVPlay by itself when the TV cannot play a stream that way), or AVPlay only */
 /* engine mode: 'avplay' (default: hardware plane, embedded subtitles, fastest zapping), 'auto' = AVPlay for live + HTML5 for movies, 'html5' = always <video> (Tizen exposes no embedded subtitles there) */
-function engineMode() { var m = Store.get('engine', window.__engineDefault || 'avplay'); return m === 'html5' || m === 'auto' ? m : 'avplay'; }
+function engineMode() { if (window.ANDROID_APP) return 'avplay'; var m = Store.get('engine', window.__engineDefault || 'avplay'); return m === 'html5' || m === 'auto' ? m : 'avplay'; }
 function engineIsAV(vod) { if (!hasAV) return false; var m = engineMode(); return m === 'avplay' || (m === 'auto' && !vod); }
 function applyEngine(vod, off) { var on = engineIsAV(vod); Player.av = on; document.documentElement.classList.toggle('h5', hasAV && !on && !off); }
 var Player = {

@@ -5,8 +5,8 @@
 var T = window.__tv, PC = window.PC || {};
 if (!T || !PC.pc) return;
 var vid = document.getElementById('vid'), P = T.Player, enc = encodeURIComponent;
-var AR = { pcNoFf: 'القنوات المباشرة محتاجة ffmpeg وهو غير مثبّت. اقفل البرنامج وشغّله تاني ووافق على التحميل (أو ضع ffmpeg في مجلد ffmpeg)', pcSubLoad: 'جاري تحضير الترجمة من الملف…', pcDl: 'جاري تحميل ffmpeg لتشغيل القنوات… انتظر دقيقة ثم أعد فتح القناة', vlcKeys: 'VLC: V الترجمة · B الصوت · H/G تأخير أو تقديم الترجمة · Esc رجوع', vlcFail: 'تعذّر تشغيل VLC', subDelay: 'توقيت الترجمة', subDelayK: 'G / H على الكيبورد = تقديم / تأخير الترجمة' };
-var EN = { pcNoFf: 'Live TV needs ffmpeg, which is not installed. Restart the app and accept the download (or put ffmpeg in the "ffmpeg" folder)', pcSubLoad: 'Preparing the subtitles from the file…', pcDl: 'Downloading ffmpeg for live TV… wait a minute, then open the channel again', vlcKeys: 'VLC: V subtitles · B audio · H/G subtitle delay · Esc back', vlcFail: 'Could not start VLC', subDelay: 'Subtitle timing', subDelayK: 'G / H on the keyboard = subtitles earlier / later' };
+var AR = { pcNoFf: 'القنوات المباشرة محتاجة ffmpeg وهو غير مثبّت. اقفل البرنامج وشغّله تاني ووافق على التحميل (أو ضع ffmpeg في مجلد ffmpeg)', pcSubLoad: 'جاري تحضير الترجمة من الملف…', pcDl: 'جاري تحميل ffmpeg لتشغيل القنوات… انتظر دقيقة ثم أعد فتح القناة', vlcKeys: 'VLC: V الترجمة · B الصوت · H/G تأخير أو تقديم الترجمة · Esc رجوع', vlcFail: 'تعذّر تشغيل VLC', subDelay: 'توقيت الترجمة', subDelayK: 'G / H على الكيبورد = تقديم / تأخير الترجمة ربع ثانية' };
+var EN = { pcNoFf: 'Live TV needs ffmpeg, which is not installed. Restart the app and accept the download (or put ffmpeg in the "ffmpeg" folder)', pcSubLoad: 'Preparing the subtitles from the file…', pcDl: 'Downloading ffmpeg for live TV… wait a minute, then open the channel again', vlcKeys: 'VLC: V subtitles · B audio · H/G subtitle delay · Esc back', vlcFail: 'Could not start VLC', subDelay: 'Subtitle timing', subDelayK: 'G / H on the keyboard = subtitles a quarter second earlier / later' };
 (function () { var k; for (k in AR) T.I18N.ar[k] = AR[k]; for (k in EN) T.I18N.en[k] = EN[k]; })();
 
 var pd = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src'), cd = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'currentTime'), dd = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'duration');
@@ -192,20 +192,29 @@ P.applyAspect = function () { var r = oAsp.apply(this, arguments); if (vEmb()) v
 /* with VLC the subtitles are drawn by VLC itself: the app's subtitle menu becomes a list of the file's tracks (+ off) */
 function hookSubs() {
   if (!T.Subs || T.Subs.__vlc) return; T.Subs.__vlc = true;
-  var oReady = T.Subs.ready, oItems = T.Subs.menuItems, oAct = T.Subs.menuAct;
+  var oReady = T.Subs.ready, oItems = T.Subs.menuItems, oAct = T.Subs.menuAct, oApply = T.Subs.applyOffset;
+  /* subtitle timing (menu rows and G / H): VLC moves its own subtitles; with ffmpeg the cue list is shifted (both directions) */
+  T.Subs.applyOffset = function () {
+    if (V) { if (vEmb()) vcmd('sdelay', this.offset / 1000); this.lag = 0; return; }
+    if (sub) { sub.delay = -this.offset / 1000; sub.shown = -2; this.lag = 0; return; }
+    return oApply.apply(this, arguments);
+  };
   T.Subs.ready = function () { if (V) { this.active = false; this.native = true; return; } return oReady.apply(this, arguments); };
   T.Subs.menuItems = function () {
     if (!V) return oItems.apply(this, arguments);
     var it = [{ hdr: true, l: T.t('subsT') }], tr = V.tracks || {}, sp = tr.s || [];
     if (!vEmb()) { it.push({ l: T.t('vlcKeys'), dis: true }); return it; }
+    var S0 = T.Subs;
+    it.push({ l: T.t('subTiming') + ': ' + S0.fmtOff(), dis: true }, { l: '◀  ' + T.t('subEarlier'), subShift: -500 }, { l: T.t('subLater') + '  ▶', subShift: 500 });
+    if (S0.offset) it.push({ l: T.t('subResetT'), subShift: 0 });
     if (sp.length <= 1) it.push({ l: T.t('subNone'), dis: true });
-    else sp.forEach(function (x) { it.push({ l: x[0] < 0 ? T.t('off') : x[1], vspu: x[0], sel: x[0] === tr.cs }); });
+    else { it.push({ hdr: true, l: T.t('subTrack') }); sp.forEach(function (x) { it.push({ l: x[0] < 0 ? T.t('off') : x[1], vspu: x[0], sel: x[0] === tr.cs }); }); }
     it.push({ l: T.t('subDelayK'), dis: true });
     return it;
   };
   T.Subs.menuAct = function (x) {
     if (x && x.vspu !== undefined) { vcmd('spu', x.vspu); if (V && V.tracks) V.tracks.cs = x.vspu; T.toast(T.t('subsT') + ': ' + x.l, 1600); return true; }
-    if (V) return false;
+    if (V && !(x && x.subShift !== undefined)) return false;
     return oAct.apply(this, arguments);
   };
 }
@@ -262,9 +271,9 @@ function toggleFS() {
 }
 window.addEventListener('keydown', function (e) {
   var ae = document.activeElement, scr = T.S && T.S.screen; if ((ae && ae.tagName === 'INPUT') || e.ctrlKey || e.altKey || e.metaKey || (e.keyCode !== 71 && e.keyCode !== 72)) return;
-  if (vEmb() && (scr === 'full' || scr === 'vod')) { V.sdelay = (V.sdelay || 0) + (e.keyCode === 72 ? 0.25 : -0.25); vcmd('sdelay', V.sdelay); T.toast('\u2194 ' + T.t('subDelay') + ' ' + (V.sdelay > 0 ? '+' : '') + V.sdelay.toFixed(2) + 's', 1400); e.stopPropagation(); return; }
-  if (V || !sub) return;
-  sub.delay = (sub.delay || 0) + (e.keyCode === 71 ? -0.5 : 0.5); sub.shown = -2; T.toast('\u2194 ' + T.t('subDelay') + ' ' + (sub.delay > 0 ? '+' : '') + sub.delay.toFixed(1) + 's', 1400); e.stopPropagation();
+  if (scr !== 'full' && scr !== 'vod') return;
+  if (!(vEmb() || (!V && sub))) return;
+  T.Subs.shift(e.keyCode === 72 ? 250 : -250); e.stopPropagation();
 }, true);
 var ASP = ['fit', 'fill', 'zoom', '169', '43', '219'], ASPN = { fit: 'aspFit', fill: 'aspFill', zoom: 'aspZoom', '169': 'asp169', '43': 'asp43', '219': 'asp219' };
 window.addEventListener('keydown', function (e) {
