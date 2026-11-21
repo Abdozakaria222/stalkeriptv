@@ -1,0 +1,38 @@
+name: Build PC (Windows exe)
+permissions:
+  contents: write
+on:
+  push:
+    branches: [main]
+    paths: ['pc/**', '.github/workflows/build-pc.yml']
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build StalkerTV.exe
+        working-directory: pc
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip pyinstaller pywebview
+          python -m PyInstaller --noconfirm --onefile --noconsole --name StalkerTV --collect-all webview --add-data "app;app" StalkerTV.py
+          New-Item -ItemType Directory -Force out/StalkerTV-PC/ffmpeg | Out-Null
+          Copy-Item dist/StalkerTV.exe out/StalkerTV-PC/
+          Copy-Item README.txt out/StalkerTV-PC/
+          Copy-Item ffmpeg/PUT-FFMPEG-HERE.txt out/StalkerTV-PC/ffmpeg/
+          Compress-Archive -Path out/StalkerTV-PC -DestinationPath ../StalkerTV-PC-Windows.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StalkerTV-PC-Windows
+          path: StalkerTV-PC-Windows.zip
+      - name: Publish to the pc-build branch
+        shell: bash
+        run: |
+          mkdir /tmp/pub && cp StalkerTV-PC-Windows.zip /tmp/pub/
+          cd /tmp/pub && git init -q -b pc-build && git config user.name actions && git config user.email actions@users.noreply.github.com
+          git add StalkerTV-PC-Windows.zip && git commit -q -m "PC build for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" pc-build
