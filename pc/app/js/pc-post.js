@@ -5,8 +5,8 @@
 var T = window.__tv, PC = window.PC || {};
 if (!T || !PC.pc) return;
 var vid = document.getElementById('vid'), P = T.Player, enc = encodeURIComponent;
-var AR = { pcNoFf: 'القنوات المباشرة محتاجة ffmpeg وهو غير مثبّت. اقفل البرنامج وشغّله تاني ووافق على التحميل (أو ضع ffmpeg في مجلد ffmpeg)', pcSubLoad: 'جاري تحضير الترجمة من الملف…', pcDl: 'جاري تحميل ffmpeg لتشغيل القنوات… انتظر دقيقة ثم أعد فتح القناة', vlcKeys: 'VLC: V الترجمة · B الصوت · H/G تأخير أو تقديم الترجمة · Esc رجوع', vlcFail: 'تعذّر تشغيل VLC' };
-var EN = { pcNoFf: 'Live TV needs ffmpeg, which is not installed. Restart the app and accept the download (or put ffmpeg in the "ffmpeg" folder)', pcSubLoad: 'Preparing the subtitles from the file…', pcDl: 'Downloading ffmpeg for live TV… wait a minute, then open the channel again', vlcKeys: 'VLC: V subtitles · B audio · H/G subtitle delay · Esc back', vlcFail: 'Could not start VLC' };
+var AR = { pcNoFf: 'القنوات المباشرة محتاجة ffmpeg وهو غير مثبّت. اقفل البرنامج وشغّله تاني ووافق على التحميل (أو ضع ffmpeg في مجلد ffmpeg)', pcSubLoad: 'جاري تحضير الترجمة من الملف…', pcDl: 'جاري تحميل ffmpeg لتشغيل القنوات… انتظر دقيقة ثم أعد فتح القناة', vlcKeys: 'VLC: V الترجمة · B الصوت · H/G تأخير أو تقديم الترجمة · Esc رجوع', vlcFail: 'تعذّر تشغيل VLC', subDelay: 'توقيت الترجمة', subDelayK: 'G / H على الكيبورد = تقديم / تأخير الترجمة' };
+var EN = { pcNoFf: 'Live TV needs ffmpeg, which is not installed. Restart the app and accept the download (or put ffmpeg in the "ffmpeg" folder)', pcSubLoad: 'Preparing the subtitles from the file…', pcDl: 'Downloading ffmpeg for live TV… wait a minute, then open the channel again', vlcKeys: 'VLC: V subtitles · B audio · H/G subtitle delay · Esc back', vlcFail: 'Could not start VLC', subDelay: 'Subtitle timing', subDelayK: 'G / H on the keyboard = subtitles earlier / later' };
 (function () { var k; for (k in AR) T.I18N.ar[k] = AR[k]; for (k in EN) T.I18N.en[k] = EN[k]; })();
 
 var pd = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src'), cd = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'currentTime'), dd = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'duration');
@@ -15,54 +15,107 @@ var C = null, tk = 0, pendingStart = 0, warned = false;
 
 
 
-/* ---- VLC: when installed (and not switched off in Settings) every channel / movie / episode plays in VLC, which decodes everything
- *      and shows the file's own subtitles itself (no delay). This page keeps a quiet "video element" in sync with it so resume,
- *      next episode, the progress and "back" work exactly as before. ---- */
-var V = null, vTimer = 0;
-function vlcOn() { return !!PC.vlc && T.Store.get('pcplayer', 'vlc') === 'vlc'; }
+/* ---- VLC (shipped with the app): every channel / movie / episode can play through VLC instead of ffmpeg (Settings -> engine).
+ *      'emb' = VLC draws the picture inside this window, over the app's video area; the keys stay with the app.
+ *      'ext' = fallback: VLC's own full-screen window.  A quiet stand-in "video element" keeps resume, next episode,
+ *      the progress bar and "back" working exactly as with the other engine. ---- */
+var V = null, vTimer = 0, rTimer = 0, vq = Promise.resolve();
+function engine() { var e = T.Store.get('pcplayer', 'vlc'); return e === 'builtin' ? 'ffmpeg' : e; }
+function vlcOn() { return !!PC.vlc && engine() !== 'ffmpeg'; }
+function vEmb() { return !!(V && V.mode === 'emb'); }
 function vfire(n) { try { vid.dispatchEvent(new Event(n)); } catch (e) {} }
 function vget(path) { return fetch(path).then(function (r) { return r.json(); }); }
-function vstop(kill) { clearInterval(vTimer); vTimer = 0; if (kill && V) vget('/vlc/cmd?c=stop').catch(function () {}); V = null; }
+/* control requests go out one after another (a "stop" must never overtake the "play" that follows it) */
+function vseq(path) { var p = vq.then(function () { return vget(path); }); vq = p.catch(function () {}); return p; }
+function vcmd(c, v) { return vseq('/vlc/cmd?c=' + c + (v !== undefined ? '&v=' + enc(v) : '')).catch(function () {}); }
+function vstop(kill) {
+  clearInterval(vTimer); clearInterval(rTimer); vTimer = rTimer = 0; var was = V; V = null; lastRect = '';
+  if (kill && was) vcmd('stop');
+}
 function startVlc(u, ss, abs) {
   vstop(false);
   var live = /\/live\//i.test(abs.pathname) || (/\.(m3u8|ts)$/i.test(abs.pathname) && !/\/(movie|series)\//i.test(abs.pathname));
-  var me = V = { u: u, t: 0, len: 0, paused: false, live: live, seen: false, first: true, ended: false, miss: 0, t0: Date.now() };
-  vget('/vlc/play?u=' + enc(u) + '&ss=' + (ss || 0) + (live ? '&live=1' : '')).then(function (j) {
+  var me = V = { u: u, t: 0, len: 0, paused: false, live: live, seen: false, ended: false, err: false, miss: 0, t0: Date.now(), mode: '', tracks: null, vw: 0, vh: 0 };
+  vseq('/vlc/play?u=' + enc(u) + '&ss=' + (ss || 0) + (live ? '&live=1' : '') + '&asp=' + enc(T.Prefs.aspect || 'fit') + '&sz=' + enc(T.Prefs.subSize || 'm') + (engine() === 'vlcwin' ? '&win=1' : '')).then(function (j) {
     if (V !== me) return;
     if (!j.ok) { V = null; T.toast(T.t('vlcFail'), 5000); vfire('error'); return; }
-    T.toast(T.t('vlcKeys'), 6000);
-    vTimer = setInterval(function () { vpoll(me); }, 500);
+    me.mode = j.mode || 'ext';
+    if (me.mode === 'ext') T.toast(T.t('vlcKeys'), 6000);
+    vTimer = setInterval(function () { vpoll(me); }, 400);
+    if (me.mode === 'emb') { rTimer = setInterval(vrect, 120); }
   }).catch(function () { if (V === me) { V = null; vfire('error'); } });
+}
+function loadTracks(me) {
+  vget('/vlc/tracks').then(function (j) { if (V === me && j) me.tracks = j; }).catch(function () {});
 }
 function vpoll(me) {
   vget('/vlc/status').then(function (st) {
     if (V !== me) return;
-    if (!st.running) {
-      if (!me.seen && Date.now() - me.t0 < 15000 && ++me.miss < 4) return;             // still launching
-      var done = me.len > 0 && me.t >= me.len - 5, wasSeen = me.seen; vstop(false);
-      if (done) vfire('ended');
-      else if (wasSeen) { var scr = T.S.screen; try { if (scr === 'full' || scr === 'vod') T.handleKey('back'); else P.stop(); } catch (e) {} }   // VLC closed by the user: back to the list
-      else vfire('error');
-      return;
+    if (me.mode === 'emb') {
+      if (!st.running) return;
+      if (st.state === 'error') { if (!me.err) { me.err = true; vfire('error'); } return; }
+      if (st.state === 'ended') { if (!me.ended) { me.ended = true; me.t = me.len || me.t; vfire('ended'); } return; }
+      if (st.state === 'starting' || st.state === 'stopped') return;
+    } else {
+      if (!st.running) {
+        if (!me.seen && Date.now() - me.t0 < 15000 && ++me.miss < 4) return;             // still launching
+        var done = me.len > 0 && me.t >= me.len - 5, wasSeen = me.seen; vstop(false);
+        if (done) vfire('ended');
+        else if (wasSeen) { var scr = T.S.screen; try { if (scr === 'full' || scr === 'vod') T.handleKey('back'); else P.stop(); } catch (e) {} }   // VLC closed by the user: back to the list
+        else vfire('error');
+        return;
+      }
+      if (st.wasfs && st.fs === false && me.seen) { vstop(true); try { T.handleKey('back'); } catch (e) {} return; }   // Esc in VLC's window
+      if (st.state === 'starting') return;
     }
-    if (st.state === 'starting') return;
-    me.t = st.time || 0; me.len = st.length || 0; me.paused = st.state === 'paused';
-    if (!me.seen) { me.seen = true; vfire('loadedmetadata'); vfire('playing'); }
+    me.t = st.time || 0; me.len = st.length || 0; me.paused = st.state === 'paused'; me.vw = st.vw || 0; me.vh = st.vh || 0;
+    if (!me.seen) {
+      if (st.state !== 'playing' && st.state !== 'paused') return;
+      me.seen = true; vfire('loadedmetadata'); vfire('playing');
+      if (me.mode === 'emb') { loadTracks(me); setTimeout(function () { loadTracks(me); }, 3000); setTimeout(function () { loadTracks(me); }, 9000); }
+    } else if (st.state === 'buffering') { if (!me.buf) { me.buf = true; vfire('waiting'); } }
     else if (st.state === 'playing' && me.buf) { me.buf = false; vfire('playing'); }
     vfire('timeupdate');
   }).catch(function () {});
 }
+/* where the picture goes: the app's video area (preview box or full screen), made smaller while the app shows its
+ * info bar / menu on top, hidden on the other screens. Sent in device pixels of this window. */
+var lastRect = '';
+function vrect() {
+  if (!V || V.mode !== 'emb') return;
+  var scr = T.S.screen, show = V.seen && !V.err && !V.ended && (scr === 'full' || scr === 'vod' || scr === 'browse'), r = null, o;
+  if (show) { var bb = vid.getBoundingClientRect(); r = { x: bb.left, y: bb.top, w: bb.width, h: bb.height }; if (r.w < 40 || r.h < 30) show = false; }
+  if (show) {
+    var L = r.x, R = r.x + r.w, Tp = r.y, B = r.y + r.h;
+    if (scr === 'full' && (o = document.querySelector('#s-full.show .ibar'))) B = Math.min(B, o.getBoundingClientRect().top - 8);
+    if (scr === 'vod' && (o = document.querySelector('#s-vod.show .vp'))) B = Math.min(B, o.getBoundingClientRect().top - 8);
+    var pm = document.getElementById('pmenu');
+    if (pm && pm.style.display === 'block') { var pr = pm.getBoundingClientRect(); if (pr.left + pr.width / 2 > window.innerWidth / 2) R = Math.min(R, pr.left); else L = Math.max(L, pr.right); }
+    var k = Math.min((R - L) / r.w, (B - Tp) / r.h, 1);
+    if (k < 0.3) show = false;
+    else if (k < 1) { var nw = r.w * k, nh = r.h * k; r = { x: L + (R - L - nw) / 2, y: Tp + (B - Tp - nh) / 2, w: nw, h: nh }; }   // smaller, same shape
+  }
+  var d = window.devicePixelRatio || 1;
+  var key = show ? [Math.round(r.x * d), Math.round(r.y * d), Math.round(r.w * d), Math.round(r.h * d)].join(',') : 'hide';
+  if (key === lastRect) return; lastRect = key;
+  var q = show ? key.split(',') : [0, 0, 0, 0];
+  vget('/vlc/rect?x=' + q[0] + '&y=' + q[1] + '&w=' + q[2] + '&h=' + q[3] + '&v=' + (show ? 1 : 0)).catch(function () { lastRect = ''; });
+}
 var vPause = vid.pause, vPlay = vid.play;
-vid.pause = function () { if (V) { V.paused = true; vget('/vlc/cmd?c=pause').catch(function () {}); return; } return vPause.apply(this, arguments); };
-vid.play = function () { if (V) { V.paused = false; vget('/vlc/cmd?c=play').catch(function () {}); return Promise.resolve(); } return vPlay.apply(this, arguments); };
-(function () { var pdsc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'paused'); Object.defineProperty(vid, 'paused', { configurable: true, get: function () { return V ? !!V.paused : pdsc.get.call(vid); } }); })();
-
+vid.pause = function () { if (V) { V.paused = true; vcmd('pause'); return; } return vPause.apply(this, arguments); };
+vid.play = function () { if (V) { V.paused = false; vcmd('play'); return Promise.resolve(); } return vPlay.apply(this, arguments); };
+(function () {
+  var pdsc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'paused'), wd = Object.getOwnPropertyDescriptor(HTMLVideoElement.prototype, 'videoWidth'), hd = Object.getOwnPropertyDescriptor(HTMLVideoElement.prototype, 'videoHeight');
+  Object.defineProperty(vid, 'paused', { configurable: true, get: function () { return V ? !!V.paused : pdsc.get.call(vid); } });
+  Object.defineProperty(vid, 'videoWidth', { configurable: true, get: function () { return V ? V.vw : wd.get.call(vid); } });
+  Object.defineProperty(vid, 'videoHeight', { configurable: true, get: function () { return V ? V.vh : hd.get.call(vid); } });
+})();
 function logical() { if (V) return V.t; return cd.get.call(vid) + (C && C.mode === 'ff' ? C.off : 0); }
 function raw(u) { pd.set.call(vid, u); }
 function playUrl() { C.pid = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); return '/play?u=' + enc(C.u) + '&ss=' + (C.off || 0) + '&a=' + (C.a || 0) + (C.live ? '&np=1' : '&pid=' + C.pid + (C.si >= 0 ? '&si=' + C.si : '')); }
 
 Object.defineProperty(vid, 'src', { configurable: true, get: function () { return pd.get.call(vid); }, set: function (u) { setSrc(String(u)); } });
-Object.defineProperty(vid, 'currentTime', { configurable: true, get: function () { return logical(); }, set: function (t) { if (V) { if (!V.live) { V.t = t; vget('/vlc/cmd?c=seek&v=' + Math.round(t)).catch(function () {}); } return; } if (C && C.mode === 'ff') seekFF(t); else cd.set.call(vid, t); } });
+Object.defineProperty(vid, 'currentTime', { configurable: true, get: function () { return logical(); }, set: function (t) { if (V) { if (!V.live) { V.t = t; vcmd('seek', Math.round(t)); } return; } if (C && C.mode === 'ff') seekFF(t); else cd.set.call(vid, t); } });
 Object.defineProperty(vid, 'duration', { configurable: true, get: function () { if (V) return V.live ? NaN : V.len; return C && C.mode === 'ff' && C.dur > 0 ? C.dur : dd.get.call(vid); } });
 
 function setSrc(u) {
@@ -116,7 +169,11 @@ var oPlay = P.play, oStop = P.stop, oTracks = P.tracks, oSel = P.selectTrack;
 P.play = function (url, h, opts) { pendingStart = (opts && opts.startMs) || 0; return oPlay.apply(this, arguments); };
 P.stop = function () { tk++; C = null; stopPoll(); sub = null; vstop(true); return oStop.apply(this, arguments); };
 P.tracks = function (type) {
-  if (V) return [];
+  if (V) {
+    if (!vEmb() || !V.tracks) return [];
+    var l = type === 'AUDIO' ? V.tracks.a : type === 'TEXT' ? V.tracks.s : [];
+    return (l || []).filter(function (x) { return x[0] >= 0; }).map(function (x) { return { index: x[0], label: x[1] }; });
+  }
   if (C && C.info) {
     if (type === 'AUDIO' && C.mode === 'ff') return C.info.a.map(function (x) { return { index: x.i, label: (x.lang || x.title || ('#' + (x.i + 1))).toUpperCase() + ' · ' + x.codec + (x.ch ? ' ' + x.ch + 'ch' : '') }; });
     if (type === 'TEXT') return C.info.s.filter(function (x) { return x.text; }).map(function (x) { return { index: x.i, label: x.lang || x.title || ('#' + (x.i + 1)) }; });
@@ -124,10 +181,35 @@ P.tracks = function (type) {
   return oTracks.apply(this, arguments);
 };
 P.selectTrack = function (type, idx) {
+  if (V) { if (vEmb()) { if (type === 'AUDIO') { vcmd('audio', idx); if (V.tracks) V.tracks.ca = idx; } else if (type === 'TEXT') { vcmd('spu', idx); if (V.tracks) V.tracks.cs = idx; } } return; }
   if (C && C.info && type === 'AUDIO' && C.mode === 'ff') { if (C.a !== idx) { C.a = idx; reloadFF(logical()); } return; }
   if (C && C.info && type === 'TEXT') { loadSub(idx); return; }
   return oSel.apply(this, arguments);
 };
+
+var oAsp = P.applyAspect;
+P.applyAspect = function () { var r = oAsp.apply(this, arguments); if (vEmb()) vcmd('aspect', T.Prefs.aspect || 'fit'); return r; };
+/* with VLC the subtitles are drawn by VLC itself: the app's subtitle menu becomes a list of the file's tracks (+ off) */
+function hookSubs() {
+  if (!T.Subs || T.Subs.__vlc) return; T.Subs.__vlc = true;
+  var oReady = T.Subs.ready, oItems = T.Subs.menuItems, oAct = T.Subs.menuAct;
+  T.Subs.ready = function () { if (V) { this.active = false; this.native = true; return; } return oReady.apply(this, arguments); };
+  T.Subs.menuItems = function () {
+    if (!V) return oItems.apply(this, arguments);
+    var it = [{ hdr: true, l: T.t('subsT') }], tr = V.tracks || {}, sp = tr.s || [];
+    if (!vEmb()) { it.push({ l: T.t('vlcKeys'), dis: true }); return it; }
+    if (sp.length <= 1) it.push({ l: T.t('subNone'), dis: true });
+    else sp.forEach(function (x) { it.push({ l: x[0] < 0 ? T.t('off') : x[1], vspu: x[0], sel: x[0] === tr.cs }); });
+    it.push({ l: T.t('subDelayK'), dis: true });
+    return it;
+  };
+  T.Subs.menuAct = function (x) {
+    if (x && x.vspu !== undefined) { vcmd('spu', x.vspu); if (V && V.tracks) V.tracks.cs = x.vspu; T.toast(T.t('subsT') + ': ' + x.l, 1600); return true; }
+    if (V) return false;
+    return oAct.apply(this, arguments);
+  };
+}
+if (T.Subs) hookSubs(); else document.addEventListener('DOMContentLoaded', hookSubs);
 
 /* ---- the movie's own subtitles (ffmpeg extracts them to WebVTT; shown through the app's normal subtitle pipeline) ---- */
 var sub = null;
@@ -179,8 +261,10 @@ function toggleFS() {
   else { var f = de.requestFullscreen || de.webkitRequestFullscreen; if (f) { var r = f.call(de); if (r && r.catch) r.catch(function () {}); } }
 }
 window.addEventListener('keydown', function (e) {
-  var ae = document.activeElement; if (V || !sub || (ae && ae.tagName === 'INPUT') || e.ctrlKey || e.altKey || e.metaKey) return;
-  if (e.keyCode === 71 || e.keyCode === 72) { sub.delay = (sub.delay || 0) + (e.keyCode === 71 ? -0.5 : 0.5); sub.shown = -2; T.toast('\u2194 ' + (sub.delay > 0 ? '+' : '') + sub.delay.toFixed(1) + 's', 1400); e.stopPropagation(); }
+  var ae = document.activeElement, scr = T.S && T.S.screen; if ((ae && ae.tagName === 'INPUT') || e.ctrlKey || e.altKey || e.metaKey || (e.keyCode !== 71 && e.keyCode !== 72)) return;
+  if (vEmb() && (scr === 'full' || scr === 'vod')) { V.sdelay = (V.sdelay || 0) + (e.keyCode === 72 ? 0.25 : -0.25); vcmd('sdelay', V.sdelay); T.toast('\u2194 ' + T.t('subDelay') + ' ' + (V.sdelay > 0 ? '+' : '') + V.sdelay.toFixed(2) + 's', 1400); e.stopPropagation(); return; }
+  if (V || !sub) return;
+  sub.delay = (sub.delay || 0) + (e.keyCode === 71 ? -0.5 : 0.5); sub.shown = -2; T.toast('\u2194 ' + T.t('subDelay') + ' ' + (sub.delay > 0 ? '+' : '') + sub.delay.toFixed(1) + 's', 1400); e.stopPropagation();
 }, true);
 var ASP = ['fit', 'fill', 'zoom', '169', '43', '219'], ASPN = { fit: 'aspFit', fill: 'aspFill', zoom: 'aspZoom', '169': 'asp169', '43': 'asp43', '219': 'asp219' };
 window.addEventListener('keydown', function (e) {

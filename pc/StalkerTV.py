@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 FROZEN = getattr(sys, 'frozen', False)          # True when packed as StalkerTV.exe (PyInstaller)
 HERE = os.path.dirname(sys.executable) if FROZEN else os.path.dirname(os.path.abspath(__file__))
 APP = os.path.join(getattr(sys, '_MEIPASS', HERE), 'app') if FROZEN else os.path.join(HERE, 'app')
-VERSION = '3.4.7-pc'
+VERSION = '3.4.8-pc'
 if sys.stdout is None or sys.stderr is None:    # windowless exe (no console): keep prints from crashing, log to a file instead
     try:
         _lf = open(os.path.join(HERE, 'StalkerTV.log'), 'w', encoding='utf-8', buffering=1)
@@ -174,10 +174,11 @@ LASTPLAY = {'url': '', 'bytes': 0, 'started': 0, 'cmd': ''}
 
 
 def find_vlc():
-    """VLC is optional: when installed, channels / movies / series are played in it (its own decoders and subtitle engine)"""
+    """VLC: the copy shipped with the app (folder "vlc" next to it) first, then an installed one"""
     c = []
     if os.environ.get('VLC_PATH'):
         c.append(os.environ['VLC_PATH'])
+    c.append(os.path.join(HERE, 'vlc', 'vlc' + EXE))
     if os.name == 'nt':
         for env in ('PROGRAMFILES', 'PROGRAMFILES(X86)', 'LOCALAPPDATA', 'ProgramW6432'):
             b = os.environ.get(env)
@@ -204,10 +205,15 @@ def find_vlc():
 
 
 VLC = find_vlc()
+VLCDIR = os.path.dirname(VLC) if VLC else ''
+VLC_BUNDLED = bool(VLC) and os.path.normcase(os.path.abspath(VLCDIR)) == os.path.normcase(os.path.abspath(os.path.join(HERE, 'vlc')))
+FAKE_EMB = os.environ.get('PC_FAKE_EMB') == '1'      # test switch: pretend the in-window VLC exists (no libvlc, no window)
+MODE = {'cur': ''}                                   # '' / 'emb' (VLC inside the app window) / 'ext' (VLC's own window)
+SUBSCALE = {'m': 100, 'l': 125, 'xl': 150}
 import atexit
-atexit.register(lambda: vlc_stop())
+atexit.register(lambda: (vlc_stop(), emb_stop()))
 VPROC = [None]
-VINFO = {'port': 0, 'pw': 'stv', 'started': 0.0}
+VINFO = {'port': 0, 'pw': 'stv', 'started': 0.0, 'fs': False}
 VLOCK = threading.Lock()
 
 
@@ -219,6 +225,32 @@ def free_port():
     return pt
 
 
+def stop_ffmpeg():
+    with ALOCK:                                   # the ffmpeg stream must not keep a second connection to the provider
+        old = list(ACTIVE)
+        del ACTIVE[:]
+    for o in old:
+        try:
+            o.kill()
+        except Exception:
+            pass
+
+
+def vlc_target(url, headers):
+    hs = dict(headers or {})
+    ua = ref = None
+    for k in list(hs):
+        if k.lower() == 'user-agent':
+            ua = hs.pop(k)
+        elif k.lower() == 'referer':
+            ref = hs.pop(k)
+    target = url
+    if hs and re_http(url):                       # VLC cannot send arbitrary headers: go through the local pass-through proxy
+        target = 'http://127.0.0.1:%d/p?u=%s&h=%s' % (PORT, urllib.parse.quote(url, safe=''), urllib.parse.quote(json.dumps(hs), safe=''))
+    return target, ua, ref
+
+
+# ---------------------------------------------------------------- VLC in its own window (fallback) ----------
 def vlc_stop():
     with VLOCK:
         p = VPROC[0]
@@ -231,45 +263,35 @@ def vlc_stop():
             pass
 
 
-def vlc_start(url, headers, ss, live):
+def vlc_start(url, headers, ss, live, sz='m'):
     vlc_stop()
-    with ALOCK:                                   # the built-in ffmpeg stream must not keep a second connection to the provider
-        old = list(ACTIVE)
-        del ACTIVE[:]
-    for o in old:
-        try:
-            o.kill()
-        except Exception:
-            pass
-    hs = dict(headers or {})
-    ua = None
-    ref = None
-    for k in list(hs):
-        if k.lower() == 'user-agent':
-            ua = hs.pop(k)
-        elif k.lower() == 'referer':
-            ref = hs.pop(k)
+    emb_stop()
+    stop_ffmpeg()
+    target, ua, ref = vlc_target(url, headers)
     VINFO['port'] = free_port()
-    cache = 3000 if live else 1500
+    VINFO['fs'] = False
     cmd = [VLC, '--no-one-instance', '--no-playlist-enqueue', '--fullscreen', '--play-and-exit', '--no-video-title-show',
            '--extraintf=http', '--http-host=127.0.0.1', '--http-port=%d' % VINFO['port'], '--http-password=' + VINFO['pw'],
-           '--network-caching=%d' % cache, '--http-reconnect', '--sub-language=ara,eng', '--no-qt-privacy-ask', '--no-qt-error-dialogs']
+           '--network-caching=%d' % (3000 if live else 1500), '--http-reconnect', '--sub-language=ara,eng',
+           '--sub-text-scale=%d' % SUBSCALE.get(sz, 100)]
+    if VLC_BUNDLED:
+        cmd += ['--intf=dummy', '--dummy-quiet']   # the copy shipped with the app has no Qt interface: just the picture
+    else:
+        cmd += ['--no-qt-privacy-ask', '--no-qt-error-dialogs']
     if ua:
         cmd.append('--http-user-agent=' + ua)
     if ref:
         cmd.append('--http-referrer=' + ref)
     if ss and ss > 3:
         cmd.append('--start-time=%d' % int(ss))
-    target = url
-    if hs and re_http(url):                       # VLC cannot send arbitrary headers: go through the local pass-through proxy
-        target = 'http://127.0.0.1:%d/p?u=%s&h=%s' % (PORT, urllib.parse.quote(url, safe=''), urllib.parse.quote(json.dumps(hs), safe=''))
     cmd.append(target)
-    log('vlc:', mask(url))
+    log('vlc (window):', mask(url))
     kw = {}
     if os.name == 'nt':
         kw['creationflags'] = 0x00000200          # CREATE_NEW_PROCESS_GROUP; VLC is a GUI app, its window must stay visible
     VPROC[0] = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kw)
     VINFO['started'] = time.time()
+    MODE['cur'] = 'ext'
     LASTPLAY.update(url=url, bytes=0)
 
 
@@ -283,14 +305,18 @@ def vlc_req(path, timeout=1.5):
 def vlc_status():
     p = VPROC[0]
     if p is None:
-        return {'running': False, 'state': 'none'}
+        return {'running': False, 'state': 'none', 'mode': 'ext'}
     if p.poll() is not None:
-        return {'running': False, 'state': 'exited', 'code': p.returncode}
+        return {'running': False, 'state': 'exited', 'code': p.returncode, 'mode': 'ext'}
     try:
         j = vlc_req('status.json')
-        return {'running': True, 'state': j.get('state', 'unknown'), 'time': j.get('time', 0), 'length': j.get('length', 0), 'rate': j.get('rate', 1)}
+        fs = j.get('fullscreen') in (True, 1, '1', 'true')
+        if fs:
+            VINFO['fs'] = True
+        return {'running': True, 'mode': 'ext', 'state': j.get('state', 'unknown'), 'time': j.get('time', 0), 'length': j.get('length', 0),
+                'fs': fs, 'wasfs': VINFO['fs']}
     except Exception:
-        return {'running': True, 'state': 'starting', 'time': 0, 'length': 0}
+        return {'running': True, 'mode': 'ext', 'state': 'starting', 'time': 0, 'length': 0}
 
 
 def vlc_cmd(c, v=''):
@@ -304,6 +330,368 @@ def vlc_cmd(c, v=''):
             vlc_stop()
         return True
     except Exception:
+        return False
+
+
+# ---------------------------------------------------------------- VLC inside the app window (libVLC) ----------
+# The picture is drawn by libVLC into a black panel laid over the app's video area inside the same window.
+# The page tells us where that area is (/vlc/rect); keys stay with the app, so every remote-style key works as before.
+EMB = {'tried': False, 'ok': False, 'err': '', 'inst': None, 'mp': None, 'form': None, 'panel': None, 'wv': None,
+       'b': (0, 0, 0, 0), 'vis': False, 'asp': 'fit', 'aspk': None, 'on': False, 'live': False, 'last': None}
+ELOCK = threading.Lock()
+
+
+def emb_form():
+    w = _WINREF.get('w')
+    if w is None:
+        return None
+    f = getattr(w, 'native', None)               # pywebview: the WinForms Form of the window
+    if f is not None:
+        return f
+    try:
+        from webview.platforms import winforms as wf
+        inst = getattr(wf.BrowserView, 'instances', {}) or {}
+        return inst.get(getattr(w, 'uid', None)) or (list(inst.values())[0] if inst else None)
+    except Exception:
+        return None
+
+
+def emb_ui(fn):
+    """runs fn on the window's GUI thread and returns its result"""
+    form = EMB['form']
+    res = {}
+
+    def run():
+        try:
+            res['v'] = fn()
+        except Exception as e:
+            res['e'] = e
+    if form is None:
+        run()
+    else:
+        from System import Action
+        if form.InvokeRequired:
+            form.Invoke(Action(run))
+        else:
+            run()
+    if 'e' in res:
+        raise res['e']
+    return res.get('v')
+
+
+class _FakeMedia(object):
+    def __init__(self, mrl):
+        self.mrl, self.opts = mrl, []
+
+    def add_option(self, o):
+        self.opts.append(o)
+
+
+class _FakeMP(object):
+    """test double with the libVLC calls the app uses (PC_FAKE_EMB=1)"""
+    def __init__(self):
+        self.m, self.st, self.t0, self.base, self.paused, self.spu, self.au, self.delay = None, 'NothingSpecial', 0.0, 0, False, 2, 1, 0
+
+    def set_media(self, m):
+        self.m = m
+
+    def play(self):
+        self.st, self.t0, self.base, self.paused = 'Opening', time.time(), 0, False
+        for o in self.m.opts:
+            if o.startswith(':start-time='):
+                self.base = int(o.split('=')[1]) * 1000
+
+    def stop(self):
+        self.st = 'Stopped'
+
+    def get_state(self):
+        if self.st == 'Opening' and time.time() - self.t0 > 0.6:
+            self.st = 'Playing'
+        return 'State.' + self.st
+
+    def get_time(self):
+        if self.st not in ('Playing', 'Paused'):
+            return self.base
+        return self.base + (0 if self.paused else int((time.time() - self.t0) * 1000))
+
+    def get_length(self):
+        return 0 if '/live/' in (self.m.mrl if self.m else '') else 3600000
+
+    def set_pause(self, on):
+        if on and not self.paused:
+            self.base, self.paused, self.st = self.get_time(), True, 'Paused'
+        elif not on and self.paused:
+            self.t0, self.paused, self.st = time.time(), False, 'Playing'
+
+    def set_time(self, ms):
+        self.base, self.t0 = int(ms), time.time()
+
+    def video_get_size(self, n=0):
+        return (1920, 1080)
+
+    def audio_get_track_description(self):
+        return [(-1, b'Disable'), (1, b'Track 1 - [Arabic]'), (2, b'Track 2 - [English]')]
+
+    def video_get_spu_description(self):
+        return [(-1, b'Disable'), (2, b'Track 1 - [English]'), (3, b'Track 2 - [Arabic]')]
+
+    def audio_get_track(self):
+        return self.au
+
+    def video_get_spu(self):
+        return self.spu
+
+    def audio_set_track(self, i):
+        self.au = i
+
+    def video_set_spu(self, i):
+        self.spu = i
+
+    def video_set_spu_delay(self, us):
+        self.delay = us
+
+    def video_set_aspect_ratio(self, a):
+        EMB['fakeasp'] = ('aspect', a)
+
+    def video_set_crop_geometry(self, a):
+        EMB['fakecrop'] = ('crop', a)
+
+
+class _FakeInst(object):
+    def media_new(self, mrl):
+        return _FakeMedia(mrl)
+
+
+def emb_init():
+    with ELOCK:
+        if EMB['tried']:
+            return EMB['ok']
+        EMB['tried'] = True
+        try:
+            if FAKE_EMB:
+                EMB.update(inst=_FakeInst(), mp=_FakeMP(), ok=True)
+                return True
+            if os.name != 'nt':
+                raise RuntimeError('only on Windows')
+            if not VLCDIR or not os.path.isfile(os.path.join(VLCDIR, 'libvlc.dll')):
+                raise RuntimeError('libvlc.dll not found')
+            form = emb_form()
+            if form is None:
+                raise RuntimeError('no app window (running in a browser)')
+            EMB['form'] = form
+            os.environ['PYTHON_VLC_LIB_PATH'] = os.path.join(VLCDIR, 'libvlc.dll')
+            os.environ['PYTHON_VLC_MODULE_PATH'] = os.path.join(VLCDIR, 'plugins')
+            os.environ['VLC_PLUGIN_PATH'] = os.path.join(VLCDIR, 'plugins')
+            try:
+                os.add_dll_directory(VLCDIR)
+            except Exception:
+                pass
+            try:
+                import vlc as pyvlc
+            except SystemExit:
+                raise RuntimeError('python-vlc could not load libvlc.dll')
+            inst = pyvlc.Instance(['--quiet', '--no-video-title-show', '--sub-language=ara,eng', '--http-reconnect',
+                                   '--no-snapshot-preview', '--no-stats', '--no-osd'])
+            if inst is None:
+                raise RuntimeError('libvlc could not start')
+            mp = inst.media_player_new()
+            mp.video_set_key_input(False)            # keys and clicks stay with the app
+            mp.video_set_mouse_input(False)
+            import clr                               # pythonnet (pywebview's Windows backend)
+            clr.AddReference('System.Windows.Forms')
+            clr.AddReference('System.Drawing')
+            from System.Windows.Forms import Panel
+            from System.Drawing import Color
+
+            def mk():
+                pn = Panel()
+                pn.BackColor = Color.Black
+                pn.Visible = False
+                pn.Enabled = False                   # never takes the keyboard or the mouse
+                pn.SetBounds(0, 0, 16, 9)
+                form.Controls.Add(pn)
+                pn.BringToFront()
+                EMB['panel'] = pn
+                for ctl in form.Controls:
+                    try:
+                        if 'webview' in str(ctl.GetType().Name).lower():
+                            EMB['wv'] = ctl
+                    except Exception:
+                        pass
+                return int(pn.Handle.ToInt64())
+            mp.set_hwnd(emb_ui(mk))
+            EMB.update(inst=inst, mp=mp, ok=True)
+            try:
+                _WINREF['w'].events.closing += emb_shutdown
+            except Exception:
+                pass
+            log('VLC inside the window: ready (%s)' % VLCDIR)
+        except Exception as e:
+            EMB['err'] = str(e)
+            log('VLC inside the window not available: %s' % e)
+        return EMB['ok']
+
+
+def emb_shutdown():
+    try:
+        emb_stop()
+    except Exception:
+        pass
+
+
+def emb_play(url, headers, ss, live, asp='fit', sz='m'):
+    vlc_stop()
+    stop_ffmpeg()
+    target, ua, ref = vlc_target(url, headers)
+    mp, inst = EMB['mp'], EMB['inst']
+    m = inst.media_new(target)
+    for o in (':network-caching=%d' % (3000 if live else 1500), ':http-reconnect', ':sub-text-scale=%d' % SUBSCALE.get(sz, 100)):
+        m.add_option(o)
+    if ua:
+        m.add_option(':http-user-agent=' + ua)
+    if ref:
+        m.add_option(':http-referrer=' + ref)
+    if ss and ss > 3:
+        m.add_option(':start-time=%d' % int(ss))
+    if EMB['on']:
+        mp.stop()
+    mp.set_media(m)
+    EMB.update(on=True, live=bool(live), asp=asp or 'fit', aspk=None)
+    MODE['cur'] = 'emb'
+    mp.play()
+    log('vlc (in window):', mask(url))
+    LASTPLAY.update(url=url, bytes=0)
+
+
+def emb_stop():
+    if not EMB.get('mp') or not EMB['on']:
+        return
+    EMB['on'] = False
+    try:
+        EMB['mp'].stop()
+    except Exception:
+        pass
+    try:
+        emb_bounds(0, 0, 0, 0, False)
+    except Exception:
+        pass
+
+
+def emb_status():
+    mp = EMB['mp']
+    if not mp or not EMB['on']:
+        return {'running': False, 'state': 'none', 'mode': 'emb'}
+    st = str(mp.get_state()).split('.')[-1].lower()
+    st = {'nothingspecial': 'starting', 'opening': 'starting'}.get(st, st)
+    vw = vh = 0
+    try:
+        vw, vh = mp.video_get_size(0)
+    except Exception:
+        pass
+    return {'running': True, 'mode': 'emb', 'state': st, 'time': max(0, mp.get_time() or 0) / 1000.0,
+            'length': max(0, mp.get_length() or 0) / 1000.0, 'vw': vw or 0, 'vh': vh or 0}
+
+
+def emb_aspect(force=False):
+    mp = EMB['mp']
+    x, y, w, h = EMB['b']
+    if not mp or w <= 0 or h <= 0:
+        return
+    a = EMB['asp']
+    import math
+    g = math.gcd(int(w), int(h)) or 1
+    ratio = '%d:%d' % (int(w) // g, int(h) // g)
+    key = (a, ratio if a != 'fit' else '')
+    if key == EMB['aspk'] and not force:
+        return
+    EMB['aspk'] = key
+    try:
+        if a == 'fit':
+            mp.video_set_crop_geometry(None)
+            mp.video_set_aspect_ratio(None)
+        elif a == 'zoom':                            # fill the area, cutting the edges
+            mp.video_set_aspect_ratio(None)
+            mp.video_set_crop_geometry(ratio)
+        else:                                        # stretch / forced 16:9, 4:3, 21:9 (the area already has that shape)
+            mp.video_set_crop_geometry(None)
+            mp.video_set_aspect_ratio(ratio)
+    except Exception as e:
+        log('aspect:', e)
+
+
+def emb_bounds(x, y, w, h, vis):
+    EMB['last'] = {'x': x, 'y': y, 'w': w, 'h': h, 'v': bool(vis)}
+    pn = EMB.get('panel')
+    if pn is not None:
+        def f():
+            if vis:
+                pn.SetBounds(int(x), int(y), max(2, int(w)), max(2, int(h)))
+                if not pn.Visible:
+                    pn.Visible = True
+                pn.BringToFront()
+            elif pn.Visible:
+                pn.Visible = False
+            wv, form = EMB.get('wv'), EMB.get('form')
+            try:                                     # keys must keep going to the app
+                if wv is not None and form.ContainsFocus and not wv.ContainsFocus:
+                    wv.Focus()
+            except Exception:
+                pass
+        emb_ui(f)
+    EMB['b'] = (x, y, w, h)
+    EMB['vis'] = bool(vis)
+    if vis:
+        emb_aspect()
+
+
+def emb_tracks():
+    mp = EMB['mp']
+    if not mp or not EMB['on']:
+        return {'a': [], 's': [], 'ca': -1, 'cs': -1}
+
+    def norm(lst):
+        out = []
+        for t in (lst or []):
+            try:
+                n = t[1]
+                if isinstance(n, bytes):
+                    n = n.decode('utf-8', 'replace')
+                out.append([int(t[0]), str(n)])
+            except Exception:
+                pass
+        return out
+    try:
+        return {'a': norm(mp.audio_get_track_description()), 's': norm(mp.video_get_spu_description()),
+                'ca': mp.audio_get_track(), 'cs': mp.video_get_spu()}
+    except Exception:
+        return {'a': [], 's': [], 'ca': -1, 'cs': -1}
+
+
+def emb_cmd(c, v=''):
+    mp = EMB['mp']
+    if not mp:
+        return False
+    try:
+        if c == 'pause':
+            mp.set_pause(1)
+        elif c == 'play':
+            mp.set_pause(0)
+        elif c == 'seek':
+            mp.set_time(int(float(v) * 1000))
+        elif c == 'stop':
+            emb_stop()
+        elif c == 'audio':
+            mp.audio_set_track(int(v))
+        elif c == 'spu':
+            mp.video_set_spu(int(v))
+        elif c == 'sdelay':                          # seconds, + = later
+            mp.video_set_spu_delay(int(float(v) * 1000000))
+        elif c == 'aspect':
+            EMB['asp'] = v or 'fit'
+            emb_aspect(True)
+        return True
+    except Exception as e:
+        log('vlc cmd %s failed: %s' % (c, e))
         return False
 
 
@@ -404,7 +792,7 @@ class H(BaseHTTPRequestHandler):
             q = urllib.parse.parse_qs(u.query)
             p = u.path
             if p == '/__info':
-                return self.send_json({'pc': True, 'ff': bool(FFMPEG and FFPROBE), 'ffmpeg': bool(FFMPEG), 'dl': DL['st'], 'vlc': bool(VLC), 'ver': VERSION, 'webm': TEST_WEBM})
+                return self.send_json({'pc': True, 'ff': bool(FFMPEG and FFPROBE), 'ffmpeg': bool(FFMPEG), 'dl': DL['st'], 'vlc': bool(VLC) or FAKE_EMB, 'vlcBundled': VLC_BUNDLED, 'ver': VERSION, 'webm': TEST_WEBM})
             if p == '/__diag':
                 b = diag_text().encode('utf-8')
                 self.send_response(200)
@@ -424,18 +812,51 @@ class H(BaseHTTPRequestHandler):
                 url = (q.get('u') or [''])[0]
                 return self.send_json(probe(url, self.hdr(q)) if re_http(url) or os.path.isfile(url) else {'ok': False})
             if p == '/vlc/play':
-                if not VLC:
+                if not VLC and not FAKE_EMB:
                     return self.send_json({'ok': False, 'err': 'novlc'})
                 try:
                     ss = float((q.get('ss') or ['0'])[0] or 0)
                 except ValueError:
                     ss = 0
-                vlc_start((q.get('u') or [''])[0], self.hdr(q), ss, (q.get('live') or ['0'])[0] == '1')
-                return self.send_json({'ok': True})
+                url, hd, live = (q.get('u') or [''])[0], self.hdr(q), (q.get('live') or ['0'])[0] == '1'
+                asp, sz = (q.get('asp') or ['fit'])[0], (q.get('sz') or ['m'])[0]
+                if (q.get('win') or ['0'])[0] != '1' and emb_init():
+                    try:
+                        emb_play(url, hd, ss, live, asp, sz)
+                        return self.send_json({'ok': True, 'mode': 'emb'})
+                    except Exception as e:
+                        log('VLC inside the window failed, using its own window: %s' % e)
+                if not VLC:
+                    return self.send_json({'ok': False, 'err': 'novlc'})
+                vlc_start(url, hd, ss, live, sz)
+                return self.send_json({'ok': True, 'mode': 'ext'})
             if p == '/vlc/status':
-                return self.send_json(vlc_status())
+                return self.send_json(emb_status() if MODE['cur'] == 'emb' else vlc_status())
             if p == '/vlc/cmd':
-                return self.send_json({'ok': vlc_cmd((q.get('c') or [''])[0], (q.get('v') or [''])[0])})
+                c, v = (q.get('c') or [''])[0], (q.get('v') or [''])[0]
+                if c == 'stop':
+                    emb_stop()
+                    vlc_stop()
+                    return self.send_json({'ok': True})
+                return self.send_json({'ok': emb_cmd(c, v) if MODE['cur'] == 'emb' else vlc_cmd(c, v)})
+            if p == '/vlc/rect':
+                def num(k):
+                    try:
+                        return int(float((q.get(k) or ['0'])[0] or 0))
+                    except ValueError:
+                        return 0
+                if MODE['cur'] == 'emb' or (q.get('v') or ['0'])[0] == '0':
+                    try:
+                        emb_bounds(num('x'), num('y'), num('w'), num('h'), (q.get('v') or ['0'])[0] == '1' and EMB['on'])
+                    except Exception as e:
+                        log('rect:', e)
+                return self.send_json({'ok': True})
+            if p == '/vlc/tracks':
+                return self.send_json(emb_tracks() if MODE['cur'] == 'emb' else {'a': [], 's': [], 'ca': -1, 'cs': -1})
+            if p == '/vlc/__test':
+                return self.send_json({'last': EMB.get('last'), 'asp': EMB.get('fakeasp'), 'crop': EMB.get('fakecrop'), 'mode': MODE['cur'],
+                                       'opts': EMB['mp'].m.opts if FAKE_EMB and EMB.get('mp') and EMB['mp'].m else None,
+                                       'delay': getattr(EMB.get('mp'), 'delay', None), 'spu': getattr(EMB.get('mp'), 'spu', None), 'au': getattr(EMB.get('mp'), 'au', None)})
             if p == '/play':
                 return self.play(q)
             if p == '/subfile':
@@ -800,6 +1221,7 @@ def run_window(url):
     except Exception:
         return False
     os.environ.setdefault('WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS', '--autoplay-policy=no-user-gesture-required')
+    os.environ.setdefault('PYWEBVIEW_GUI', 'edgechromium')      # the WinForms window: VLC draws into a panel inside it
     try:
         class _Api(object):
             # NOTE: no attribute here may hold the window object: pywebview walks the attributes of the js_api
@@ -845,6 +1267,99 @@ def ensure_ffmpeg():
         log('  could not download. Put ffmpeg.exe and ffprobe.exe in the "ffmpeg" folder by hand (see README.txt).')
 
 
+def selftest_vlc(media, outpath):
+    """CI check on Windows: libVLC from the shipped folder, drawing into a WinForms panel, and every call the app makes"""
+    out = []
+
+    def say(*a):
+        out.append(' '.join(str(x) for x in a))
+    try:
+        say('VLC:', VLC, 'bundled:', VLC_BUNDLED, 'frozen:', FROZEN)
+        os.environ['PYTHON_VLC_LIB_PATH'] = os.path.join(VLCDIR, 'libvlc.dll')
+        os.environ['PYTHON_VLC_MODULE_PATH'] = os.path.join(VLCDIR, 'plugins')
+        os.environ['VLC_PLUGIN_PATH'] = os.path.join(VLCDIR, 'plugins')
+        try:
+            os.add_dll_directory(VLCDIR)
+        except Exception:
+            pass
+        import vlc as pyvlc
+        say('python-vlc', getattr(pyvlc, '__version__', '?'), 'libvlc', pyvlc.libvlc_get_version())
+        inst = pyvlc.Instance(['--quiet', '--no-video-title-show', '--sub-language=ara,eng', '--http-reconnect', '--no-snapshot-preview', '--no-stats', '--no-osd'])
+        mp = inst.media_player_new()
+        mp.video_set_key_input(False)
+        mp.video_set_mouse_input(False)
+        import clr
+        clr.AddReference('System.Windows.Forms')
+        clr.AddReference('System.Drawing')
+        from System.Windows.Forms import Form, Panel, Application
+        from System.Drawing import Color
+        f = Form()
+        f.Width, f.Height = 900, 520
+        pn = Panel()
+        pn.BackColor = Color.Black
+        pn.Enabled = False
+        pn.SetBounds(0, 0, 640, 360)
+        f.Controls.Add(pn)
+        pn.BringToFront()
+        f.Show()
+        mp.set_hwnd(int(pn.Handle.ToInt64()))
+
+        def pump(sec):
+            t0 = time.time()
+            while time.time() - t0 < sec:
+                Application.DoEvents()
+                time.sleep(0.03)
+        m = inst.media_new(media)
+        for o in (':network-caching=1500', ':http-reconnect', ':sub-text-scale=125', ':start-time=3'):
+            m.add_option(o)
+        mp.set_media(m)
+        mp.play()
+        pump(5)
+        try:
+            size = mp.video_get_size(0)
+        except Exception as e:
+            size = 'err %s' % e
+        say('state', mp.get_state(), 'time', mp.get_time(), 'length', mp.get_length(), 'size', size)
+        EMB.update(mp=mp, on=True)
+        say('tracks', json.dumps(emb_tracks(), ensure_ascii=False))
+        mp.set_time(12000)
+        pump(1.5)
+        say('after seek to 12s:', mp.get_time())
+        mp.set_pause(1)
+        pump(1)
+        say('after pause:', mp.get_state())
+        mp.set_pause(0)
+        mp.audio_set_track(emb_tracks()['a'][-1][0])
+        mp.video_set_spu(emb_tracks()['s'][-1][0])
+        mp.video_set_spu_delay(500000)
+        pump(1)
+        say('audio now', mp.audio_get_track(), 'spu now', mp.video_get_spu(), 'spu delay', mp.video_get_spu_delay())
+        pn.SetBounds(100, 50, 480, 270)
+        EMB.update(b=(100, 50, 480, 270), asp='zoom', aspk=None)
+        emb_aspect(True)
+        EMB.update(asp='fill', aspk=None)
+        emb_aspect(True)
+        EMB.update(asp='fit', aspk=None)
+        emb_aspect(True)
+        pump(1.5)
+        say('after resize/aspect:', mp.get_state(), mp.get_time())
+        mp.stop()
+        say('after stop:', mp.get_state())
+        f.Close()
+        say('SELFTEST OK')
+    except BaseException:
+        import traceback
+        say('SELFTEST FAIL', traceback.format_exc())
+    try:
+        import webview
+        from webview.platforms import winforms as wf
+        say('pywebview', getattr(webview, '__version__', '?'), 'BrowserView.instances:', hasattr(wf.BrowserView, 'instances'))
+    except BaseException as e:
+        say('pywebview check:', repr(e))
+    with open(outpath, 'w', encoding='utf-8') as fh:
+        fh.write('\n'.join(out) + '\n')
+
+
 def main():
     if not os.path.isdir(APP):
         log('app folder not found next to StalkerTV.py')
@@ -876,7 +1391,7 @@ def main():
     srv.daemon_threads = True
     log('Stalker TV %s' % VERSION)
     log('  address : ' + url)
-    log('  vlc     : ' + (VLC or 'not found (install VLC to play in it)'))
+    log('  vlc     : ' + (VLC or 'not found') + (' (shipped with the app)' if VLC_BUNDLED else ''))
     log('  ffmpeg  : ' + (FFMPEG or 'NOT FOUND (only mp4/webm files will play - put ffmpeg.exe and ffprobe.exe in the "ffmpeg" folder)'))
     if FFMPEG and not FFPROBE:
         log('  ffprobe : NOT FOUND (needed together with ffmpeg)')
@@ -912,6 +1427,10 @@ if __name__ == '__main__':
         if sys.version_info < (3, 7):
             print('Python 3.7 or newer is required. You have ' + sys.version.split()[0])
             rc = 1
+        elif '--selftest-vlc' in sys.argv:
+            i = sys.argv.index('--selftest-vlc')
+            selftest_vlc(sys.argv[i + 1], sys.argv[i + 2])
+            rc = 0
         else:
             rc = main()
     except KeyboardInterrupt:
