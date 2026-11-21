@@ -4,7 +4,7 @@ permissions:
 on:
   push:
     branches: [main]
-    paths-ignore: ['pc/**', '.github/workflows/build-pc.yml']
+    paths-ignore: ['pc/**', 'pc-ci/**', '.github/workflows/build-pc.yml']
   workflow_dispatch:
 jobs:
   build:

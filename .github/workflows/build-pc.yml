@@ -63,6 +63,7 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
+          Remove-Item out/StalkerTV-PC/StalkerTV.log, out/StalkerTV-PC/error.log -ErrorAction SilentlyContinue
           Compress-Archive -Path out/StalkerTV-PC -DestinationPath StalkerTV-PC-Windows.zip -Force
           Write-Host ("zip: {0:N1} MB" -f ((Get-Item StalkerTV-PC-Windows.zip).Length / 1MB))
       - name: Publish to the pc-build branch
