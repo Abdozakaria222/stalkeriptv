@@ -10,7 +10,7 @@ var S = T.S, doc = document, html = doc.documentElement;
 html.classList.add('touch');
 var st = doc.createElement('style');
 st.textContent = 'html.touch,html.touch *{-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}' +
-  'html.touch input{-webkit-user-select:text;user-select:text}html.touch .hint{display:none!important}' +
+  'html.touch input{-webkit-user-select:text;user-select:text}html.touch .hint,html.touch body.e2 .keys,html.touch .vhint{display:none!important}' +
   '#tbk{position:fixed;left:10px;top:10px;width:46px;height:46px;border-radius:23px;background:rgba(10,15,24,.78);border:2px solid rgba(34,211,238,.7);color:#e9f0fa;font:26px/42px sans-serif;text-align:center;z-index:99999;display:none}' +
   '#tbk.on{display:block}' +
   '#tmenu{position:fixed;right:10px;top:10px;width:46px;height:46px;border-radius:23px;background:rgba(10,15,24,.78);border:2px solid rgba(34,211,238,.7);color:#e9f0fa;font:24px/42px sans-serif;text-align:center;z-index:99999;display:none}' +
@@ -33,10 +33,14 @@ mb.addEventListener('touchend', function (e) {
   if (T.menu.open) key('back'); else if (T.openMenu) T.openMenu(S.screen === 'vod' ? 'vod' : 'live');
   sync();
 });
+/* the round back button shows for a few seconds after the screen is touched (it would cover the clock / tabs otherwise) */
+var bkOn = false, bkT = 0;
+function touched() { bkOn = true; clearTimeout(bkT); bkT = setTimeout(function () { bkOn = false; sync(); }, 4000); sync(); }
 function sync() {
   var scr = S.screen, play = scr === 'full' || scr === 'vod';
-  bk.classList.toggle('on', scr !== 'accounts' && scr !== 'full');
-  mb.classList.toggle('on', play && (T.menu.open || !!doc.querySelector('#s-full.show,#s-vod.show')));
+  var osd = !!doc.querySelector('#s-full.show,#s-vod.show');
+  bk.classList.toggle('on', scr !== 'accounts' && (bkOn || (play && (osd || T.menu.open))));
+  mb.classList.toggle('on', play && (T.menu.open || osd));
 }
 setInterval(sync, 400);
 
@@ -62,7 +66,7 @@ function scrollAt(el, dx, dy, axis) {
  * (menus, virtual lists) that element leaves the page and its events would no longer reach the document. */
 function live(q, x, y) { if (!q.el || !q.el.isConnected) q.el = doc.elementFromPoint(x, y); return q.el; }
 function onStart(e) {
-  stopMom();
+  stopMom(); touched();
   if (g && g.tg) unhook(g.tg);
   if (e.touches.length !== 1) { g = null; return; }
   var tg = e.target;
@@ -93,7 +97,7 @@ function onMove(e) {
     if (n >= 1) { var dir = g.accY < 0 ? 'down' : 'up'; g.accY -= (g.accY < 0 ? -1 : 1) * n * p; if (!(T.swipeMedia && T.swipeMedia(dir, n, el))) if (T.swipeLive) T.swipeLive(dir, n, el); }
   } else {
     g.accX += dx; var px = pitch(el, 'x'), m = Math.floor(Math.abs(g.accX) / px);
-    if (m >= 1) { var dr = g.accX < 0 ? 'right' : 'left'; g.accX -= (g.accX < 0 ? -1 : 1) * m * px; if (screen === 'vod') { dr = dx < 0 ? 'left' : 'right'; for (var i = 0; i < Math.min(m, 3); i++) key(dr); } else if (T.swipeMedia) T.swipeMedia(dr, m, el); }
+    if (m >= 1) { var dr = g.accX < 0 ? 'right' : 'left'; g.accX -= (g.accX < 0 ? -1 : 1) * m * px; if (screen === 'vod') { dr = dx < 0 ? 'left' : 'right'; for (var i = 0; i < Math.min(m, 3); i++) key(dr); } else if (screen === 'full') { if (!g.fired) { g.fired = 1; if (T.swipeLive) T.swipeLive(dr, 1, el); } } else if (T.swipeMedia) T.swipeMedia(dr, m, el); }
   }
 }
 function fling(q, v) {

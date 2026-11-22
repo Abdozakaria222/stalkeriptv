@@ -430,6 +430,7 @@ function libStatic(e) {
 }
 function libCount(e) { if (e.st) { var n = libStatic(e).length; return n ? String(n) : '0'; } return L.cnt[e.id] ? String(L.cnt[e.id]) : ''; }
 function openLib(kind) {
+  LCOLS = Math.max(5, Math.floor((1440 + (T.cw ? T.cw() - 1920 : 0)) / LCW));      // wider phone screens get more posters per row
   L.kind = kind; L.tok++; L.zone = 'list'; L.q = ''; L.items = []; L.total = 0; L.nodes = {}; L.sel = 0; L.sTop = 0; L.cnt = {}; var tok = L.tok;
   go('lib');
   var s = $('#s-lib');

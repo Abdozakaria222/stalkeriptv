@@ -67,11 +67,23 @@ function applyLang() { document.documentElement.lang = lang; document.documentEl
 /* ======================================================================
  * scaling (TV runs at 1920x1080; scale only matters in a desktop browser)
  * ==================================================================== */
-var app = $('#app'), SCALE = 1;
+var app = $('#app'), SCALE = 1, CW = 1920;
+/* phones wider than 16:9 (20:9 ...): the layout grows sideways to the whole screen instead of black side bars,
+ * so the video in full screen also covers the whole phone and "stretch / zoom / 16:9" really change the picture */
+function canvasW() {
+  var W = window.innerWidth, H = window.innerHeight;
+  return window.ANDROID_APP && H > 0 && W / H > 16 / 9 + 0.03 ? Math.min(2600, Math.round(1080 * W / H)) : 1920;
+}
 function fit() {
-  var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  var cw = canvasW();
+  if (cw !== CW || !fit.done) {
+    CW = cw; fit.done = true; var de = document.documentElement;
+    de.style.setProperty('--cw', CW + 'px'); de.style.setProperty('--cx', (CW - 1920) + 'px'); de.classList.toggle('wide', CW > 1920);
+    if (FULL) { FULL.w = CW; PREV.x = 970 + CW - 1920; if (Player && Player.rect) Player.applyAspect(); }
+  }
+  var s = Math.min(window.innerWidth / CW, window.innerHeight / 1080);
   if (Math.abs(s - 1) < 0.001) { s = 1; app.style.left = '0'; app.style.top = '0'; }
-  else { app.style.left = Math.round((window.innerWidth - 1920 * s) / 2) + 'px'; app.style.top = Math.round((window.innerHeight - 1080 * s) / 2) + 'px'; }
+  else { app.style.left = Math.round((window.innerWidth - CW * s) / 2) + 'px'; app.style.top = Math.round((window.innerHeight - 1080 * s) / 2) + 'px'; }
   SCALE = s; app.style.transform = s === 1 ? 'none' : 'scale(' + s + ')';
 }
 window.addEventListener('resize', fit); fit();
@@ -292,7 +304,7 @@ function makeClient(acc) { return acc.type === 'xtream' ? new Xtream(acc) : new 
  * Player (Samsung AVPlay, with <video> fallback)
  * ==================================================================== */
 var stage = $('#stage'), vid = $('#vid'), stageMsgEl = $('#stageMsg');
-var PREV = { x: 970, y: 0, w: 950, h: 534 }, FULL = { x: 0, y: 0, w: 1920, h: 1080 };
+var PREV = { x: 970 + CW - 1920, y: 0, w: 950, h: 534 }, FULL = { x: 0, y: 0, w: CW, h: 1080 };
 
 /* ---- user preferences (Netflix-style settings) ---- */
 var Prefs = Store.get('prefs', null) || {};
@@ -1139,7 +1151,7 @@ function scrollLive(el, dx, dy, axis) {
 }
 function tapLive(el, x, y) {
   var sc = S.screen, n, i;
-  if (sc === 'full') { showOsd(6000); return true; }
+  if (sc === 'full') { var w0 = window.innerWidth || 1; if (x < w0 * 0.22 || x > w0 * 0.78) { leaveFull(); return true; } showOsd(6000); return true; }
   if (sc !== 'browse') return false;
   if ((n = tUp(el, '#catBox .row')) && (i = tIdx(catList.rows, n)) >= 0) { setZone('chan'); if (i !== S.catIdx) applyCat(i); return true; }
   if ((n = tUp(el, '#chBox .row')) && (i = tIdx(chList.rows, n)) >= 0) {
@@ -1153,7 +1165,7 @@ function tapLive(el, x, y) {
 }
 function swipeLive(dir, steps, el) {
   var sc = S.screen, k;
-  if (sc === 'full') { if (dir === 'up') zap(1); else if (dir === 'down') zap(-1); return true; }
+  if (sc === 'full') { if (dir === 'up') zap(1); else if (dir === 'down') zap(-1); else leaveFull(); return true; }
   if (sc !== 'browse') return false;
   if (dir === 'left' || dir === 'right') return true;
   var list = tUp(el, '#catBox') ? catList : chList; if (list === catList) setZone('cat'); else setZone('chan');
@@ -1191,7 +1203,7 @@ var T = window.__tv = {
   go: go, toast: toast, Nav: Nav, Player: Player, Prefs: Prefs, savePrefs: savePrefs, Quality: Quality, S: S, hintBar: hintBar, hue: hue,
   showAccounts: showAccounts, saveAccounts: saveAccounts, enterLive: enterLive, loadLive: loadLive, openAccount: openAccount, showRelay: showSettings,
   showForm: showForm, Portal: Portal, Xtream: Xtream, cleanCmd: cleanCmd, stageMsg: stageMsg, SCREENS: SCREENS, errText: errText,
-  scale: function () { return SCALE; }, scrollLive: scrollLive, tapLive: tapLive, swipeLive: swipeLive, handleKey: handle, hasAV: hasAV, engineMode: engineMode, engineIsAV: engineIsAV, applyEngine: applyEngine, getLang: function () { return lang; }, setLang: function (l) { lang = l; Store.set('lang', l); applyLang(); },
+  scale: function () { return SCALE; }, cw: function () { return CW; }, scrollLive: scrollLive, tapLive: tapLive, swipeLive: swipeLive, handleKey: handle, hasAV: hasAV, engineMode: engineMode, engineIsAV: engineIsAV, applyEngine: applyEngine, getLang: function () { return lang; }, setLang: function (l) { lang = l; Store.set('lang', l); applyLang(); },
   loadEpg: function (c) { loadEpg(c); }, keys: {}, menu: { open: false, key: function () {} }, openHub: null, openMenu: null, typing: null
 };
 

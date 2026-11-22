@@ -249,3 +249,11 @@ html.tv.perf .tile .tn,html.tv.perf .pc .hf,html.tv.perf #s-lib .gp .hf,html.tv.
 html.tv.perf .skrow,html.tv.perf .skrow i,html.tv.perf .qrwait i,html.tv.perf .eq u{animation:none!important}
 html.tv.perf .dshade{background:rgba(7,12,22,.78)!important}
 html.tv.perf .brand .mark,html.tv.perf .btn,html.tv.perf .ring{box-shadow:none!important}
+
+/* ===== wide phone screens (html.wide: the canvas is wider than 1920, --cx = the extra width) ===== */
+html.wide body.e2 .colM{width:calc(900px + var(--cx,0px))}
+html.wide body.e2 .colL{left:calc(970px + var(--cx,0px))}
+html.wide body.e2 .keys{width:calc(900px + var(--cx,0px))}
+html.wide body.e2 .lhdr{width:calc(560px + var(--cx,0px))}
+html.wide #s-lib .lhead{width:calc(1380px + var(--cx,0px))}
+html.wide #s-lib .lgrid{width:calc(1440px + var(--cx,0px))}
