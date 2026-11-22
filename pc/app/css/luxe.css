@@ -284,3 +284,6 @@ html[dir=ltr] #ptype,.en #ptype{direction:ltr}
 
 /* menu rows stay on one line (long names end with …) */
 #pmenu .pmi span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* the QR screen note when encryption is not available yet */
+.qrnote.warn{color:#fbbf24}

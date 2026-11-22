@@ -16,6 +16,7 @@ Phone: tap = OK, swipe = move, Back button = back.
 Same features as the TV app (EPG, subtitles, quality, screen fit...). Playback uses ExoPlayer (HLS, TS, MP4, MKV).
 Note: some audio formats (AC3/E-AC3) depend on the device's decoder.
 Internet subtitles: Settings -> Subtitles -> Internet subtitles (OpenSubtitles) - enter your free API key from opensubtitles.com
-(API Consumers -> New Consumer). Text from the phone (add an account, or type in a search / text box on a TV box): the QR code opens the file
-phone.txt on GitHub (Abdozakaria222/stalkeriptv, branch "phone"). Write a new line and press Commit changes;
-the app reads it within about 15 seconds. The file is public. Settings can switch this back to ntfy.
+(API Consumers -> New Consumer). Text from the phone (add an account, or type in a search / text box on a TV box): the QR code opens a small page
+(GitHub Pages of this repo) that encrypts the text on the phone with this device's own key and writes it to phone.txt
+(branch "phone"); the app reads and decrypts it within about 15 seconds. One-time: Settings -> Pages -> Branch: main, /docs.
+An optional GitHub token saved in that page makes sending one tap. Settings can switch this back to ntfy.
