@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 FROZEN = getattr(sys, 'frozen', False)          # True when packed as StalkerTV.exe (PyInstaller)
 HERE = os.path.dirname(sys.executable) if FROZEN else os.path.dirname(os.path.abspath(__file__))
 APP = os.path.join(getattr(sys, '_MEIPASS', HERE), 'app') if FROZEN else os.path.join(HERE, 'app')
-VERSION = '3.5.0-pc'
+VERSION = '3.6.0-pc'
 if sys.stdout is None or sys.stderr is None:    # windowless exe (no console): keep prints from crashing, log to a file instead
     try:
         _lf = open(os.path.join(HERE, 'StalkerTV.log'), 'w', encoding='utf-8', buffering=1)
@@ -71,7 +71,7 @@ def log(*a):
         pass
 
 
-def open_upstream(url, headers, rng=None, timeout=30):
+def open_upstream(url, headers, rng=None, timeout=30, data=None):
     h = {'User-Agent': DEF_UA, 'Accept': '*/*'}
     for k, v in (headers or {}).items():
         if k.lower() in ('host', 'connection', 'content-length', 'accept-encoding'):
@@ -79,7 +79,7 @@ def open_upstream(url, headers, rng=None, timeout=30):
         h[k] = v
     if rng:
         h['Range'] = rng
-    req = urllib.request.Request(url, headers=h)
+    req = urllib.request.Request(url, headers=h, data=data, method='POST' if data is not None else None)
     for ctx in (CTX_OK, CTX_BAD):
         try:
             return urllib.request.urlopen(req, timeout=timeout, context=ctx)
@@ -456,6 +456,12 @@ class _FakeMP(object):
     def video_set_crop_geometry(self, a):
         EMB['fakecrop'] = ('crop', a)
 
+    def video_set_marquee_int(self, o, v):
+        EMB.setdefault('fakemarq', {})[o] = v
+
+    def video_set_marquee_string(self, o, v):
+        EMB.setdefault('fakemarq', {})['text'] = v
+
 
 class _FakeInst(object):
     def media_new(self, mrl):
@@ -555,8 +561,13 @@ def emb_play(url, headers, ss, live, asp='fit', sz='m'):
         m.add_option(':start-time=%d' % int(ss))
     if EMB['on']:
         mp.stop()
+    try:
+        if EMB.get('marq'):
+            emb_marq('')
+    except Exception:
+        pass
     mp.set_media(m)
-    EMB.update(on=True, live=bool(live), asp=asp or 'fit', aspk=None)
+    EMB.update(on=True, live=bool(live), asp=asp or 'fit', aspk=None, sz=sz or 'm')
     MODE['cur'] = 'emb'
     mp.play()
     log('vlc (in window):', mask(url))
@@ -567,6 +578,11 @@ def emb_stop():
     if not EMB.get('mp') or not EMB['on']:
         return
     EMB['on'] = False
+    try:
+        if EMB.get('marq'):
+            emb_marq('')
+    except Exception:
+        pass
     try:
         EMB['mp'].stop()
     except Exception:
@@ -689,10 +705,38 @@ def emb_cmd(c, v=''):
         elif c == 'aspect':
             EMB['asp'] = v or 'fit'
             emb_aspect(True)
+        elif c == 'marq':
+            emb_marq(v)
         return True
     except Exception as e:
         log('vlc cmd %s failed: %s' % (c, e))
         return False
+
+
+def emb_marq(text):
+    """one subtitle line from the app (internet subtitles, already translated) drawn by VLC over the picture; '' hides it"""
+    mp = EMB['mp']
+    if not mp:
+        return
+    # libvlc_video_marquee_option_t: Enable 0, Text 1, Color 2, Opacity 3, Position 4, Refresh 5, Size 6, Timeout 7, X 8, Y 9
+    if not text:
+        mp.video_set_marquee_int(0, 0)
+        EMB['marq'] = ''
+        return
+    try:
+        w, h = mp.video_get_size(0) or (0, 0)
+    except Exception:
+        w, h = 0, 0
+    size = {'m': 0.052, 'l': 0.062, 'xl': 0.074}.get(EMB.get('sz') or 'm', 0.052)
+    mp.video_set_marquee_string(1, text)
+    mp.video_set_marquee_int(2, 0xFFFFFF)
+    mp.video_set_marquee_int(3, 255)
+    mp.video_set_marquee_int(4, 8)                   # bottom centre
+    mp.video_set_marquee_int(6, max(16, int((h or 720) * size)))
+    mp.video_set_marquee_int(7, 0)
+    mp.video_set_marquee_int(9, max(8, int((h or 720) * 0.06)))
+    mp.video_set_marquee_int(0, 1)
+    EMB['marq'] = text
 
 
 SHIFT = {}
@@ -856,7 +900,8 @@ class H(BaseHTTPRequestHandler):
             if p == '/vlc/__test':
                 return self.send_json({'last': EMB.get('last'), 'asp': EMB.get('fakeasp'), 'crop': EMB.get('fakecrop'), 'mode': MODE['cur'],
                                        'opts': EMB['mp'].m.opts if FAKE_EMB and EMB.get('mp') and EMB['mp'].m else None,
-                                       'delay': getattr(EMB.get('mp'), 'delay', None), 'spu': getattr(EMB.get('mp'), 'spu', None), 'au': getattr(EMB.get('mp'), 'au', None)})
+                                       'delay': getattr(EMB.get('mp'), 'delay', None), 'spu': getattr(EMB.get('mp'), 'spu', None), 'au': getattr(EMB.get('mp'), 'au', None),
+                                       'marq': EMB.get('fakemarq')})
             if p == '/play':
                 return self.play(q)
             if p == '/subfile':
@@ -901,7 +946,30 @@ class H(BaseHTTPRequestHandler):
         if self.command != 'HEAD':
             self.wfile.write(b)
 
-    def proxy(self, q):
+    def do_POST(self):
+        """the app's POST requests (JSON to web services, e.g. the subtitle service) go out through the same proxy"""
+        try:
+            u = urllib.parse.urlsplit(self.path)
+            q = urllib.parse.parse_qs(u.query)
+            n = int(self.headers.get('Content-Length') or 0)
+            body = self.rfile.read(n) if n > 0 else b''
+            if u.path == '/p':
+                return self.proxy(q, body)
+            self.send_response(404)
+            self.cors()
+            self.end_headers()
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            pass
+        except Exception as e:
+            try:
+                self.send_response(502)
+                self.cors()
+                self.end_headers()
+                self.wfile.write(str(e).encode('utf-8', 'replace'))
+            except Exception:
+                pass
+
+    def proxy(self, q, body=None):
         url = (q.get('u') or [''])[0]
         if not re_http(url):
             self.send_response(400)
@@ -909,7 +977,7 @@ class H(BaseHTTPRequestHandler):
             self.end_headers()
             return
         try:
-            r = open_upstream(url, self.hdr(q), self.headers.get('Range'))
+            r = open_upstream(url, self.hdr(q), self.headers.get('Range') if body is None else None, data=body)
         except Exception as e:
             self.send_response(502)
             self.cors()

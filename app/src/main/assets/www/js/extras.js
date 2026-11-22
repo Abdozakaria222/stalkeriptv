@@ -9,13 +9,17 @@ var AR = {
   qrAdd: 'إضافة من الهاتف', qrTitle: 'أضف حسابك من هاتفك', qrS1: 'صوّر الكود بكاميرا الهاتف وافتح الرابط', qrS2: 'اكتب في خانة الرسالة سطراً واحداً بالصيغة الموضّحة', qrS3: 'اضغط إرسال — يظهر الحساب هنا خلال ثوانٍ',
   qrWait: 'في انتظار الهاتف…', qrGot: 'تمت إضافة', qrNew: 'كود جديد', qrBadMsg: 'لم أفهم الرسالة. اكتب: السيرفر ثم اسم المستخدم ثم كلمة المرور', qrNoNet: 'لا يوجد اتصال بالإنترنت',
   minWord: 'د', remain: 'متبقي', endsAt: 'ينتهي', origQ: 'أصلية', qTop: 'أعلى جودة متاحة', qLow: 'أقل جودة متاحة', crashed: 'أُغلق التطبيق فجأة المرة الماضية', diagT: 'تشخيص الإغلاق المفاجئ', diagNone: 'لا يوجد', diagScreen: 'آخر إغلاق مفاجئ على شاشة', diagErr: 'آخر خطأ',
-  qrFmtX: 'Xtream', qrFmtS: 'Stalker', qrNote: 'ملاحظة: الرسالة تمر عبر خدمة ntfy.sh على رابط سري عشوائي. لا تستخدم الكود إلا لنفسك.'
+  qrFmtX: 'Xtream', qrFmtS: 'Stalker', qrNote: 'ملاحظة: الرسالة تمر عبر خدمة ntfy.sh على رابط سري عشوائي. لا تستخدم الكود إلا لنفسك.',
+  ptT: 'اكتب من موبايلك', ptS: 'صوّر الكود مرة واحدة وسيب الصفحة مفتوحة على الموبايل، اكتب واضغط إرسال', ptWait: 'جاهز — في انتظار الموبايل…', ptGot: 'وصل من الموبايل',
+  ptRow: 'الكتابة من الموبايل', ptNote: 'لما تقف على خانة بحث أو كتابة يظهر كود QR صغير: اللي تكتبه على الموبايل يتكتب في الخانة على طول'
 };
 var EN = {
   qrAdd: 'Add from phone', qrTitle: 'Add your account from your phone', qrS1: 'Scan the code with your phone camera and open the link', qrS2: 'Type one line in the message box, in the format shown', qrS3: 'Tap send — the account appears here in seconds',
   qrWait: 'Waiting for your phone…', qrGot: 'Added', qrNew: 'New code', qrBadMsg: 'Could not understand the message. Type: server, username, password', qrNoNet: 'No internet connection',
   minWord: 'min', remain: 'Left', endsAt: 'Ends', origQ: 'Source', qTop: 'Highest quality', qLow: 'Lowest quality', crashed: 'The app closed unexpectedly last time', diagT: 'Crash diagnostics', diagNone: 'None', diagScreen: 'Last unexpected close on screen', diagErr: 'Last error',
-  qrFmtX: 'Xtream', qrFmtS: 'Stalker', qrNote: 'Note: the message passes through ntfy.sh on a random secret link. Use the code only for yourself.'
+  qrFmtX: 'Xtream', qrFmtS: 'Stalker', qrNote: 'Note: the message passes through ntfy.sh on a random secret link. Use the code only for yourself.',
+  ptT: 'Type from your phone', ptS: 'Scan once and keep the page open on the phone, type and tap send', ptWait: 'Ready — waiting for your phone…', ptGot: 'Received from the phone',
+  ptRow: 'Type from phone', ptNote: 'When a search or text box is selected, a small QR shows: what you type on the phone goes straight into the box'
 };
 (function () { var k; for (k in AR) T.I18N.ar[k] = AR[k]; for (k in EN) T.I18N.en[k] = EN[k]; })();
 
@@ -139,6 +143,84 @@ function received(list) {
   T.saveAccounts(); T.showAccounts(last); toast('✓ ' + t('qrGot') + (n > 1 ? ' (' + n + ')' : ''), 2600);
 }
 T.openQr = openQr;
+
+/* ---- type from the phone: when a text box is selected with the remote (Samsung TV / Android TV box), a small QR shows next to it.
+ *      It opens this TV's own private ntfy page on the phone (the same page every time, so it can stay open there):
+ *      whatever is sent from it lands in the selected box (search, account fields, keys). ---- */
+var PT = { act: false, inp: null, tok: 0, timer: 0, seen: {}, at: 0, vi: 0, fails: 0, el: null, svg: '', tv: null, touch: false };
+function ptTopic() {
+  var tp = Store.get('ptTopic', ''); if (/^stv-k-[a-z0-9]{16,}$/.test(tp)) return tp;
+  tp = newTopic().replace(/^stv-/, 'stv-k-'); Store.set('ptTopic', tp); return tp;
+}
+function ptCan() {
+  if ((window.PC && window.PC.pc) || PT.touch) return false;
+  if (window.ANDROID_APP) {                       // phones and tablets have their own keyboard; TV boxes do not
+    if (PT.tv === null) { var ap = window.AndroidPlayer; try { PT.tv = !!(ap && ap.isTv && ap.isTv()); } catch (e) { PT.tv = false; } }
+    return PT.tv;
+  }
+  return true;
+}
+function ptAllowed() { return ptCan() && Store.get('ptype', true) !== false; }
+T.ptCan = ptCan;
+/* the box being typed in, or the highlighted one (search boxes / form fields show as .focus) */
+function ptTarget() {
+  var ae = document.activeElement;
+  if (ae && ae.tagName === 'INPUT' && ae.offsetParent !== null) return ae;
+  var scr = $('#s-' + S.screen); return scr ? scr.querySelector('.focus input') : null;
+}
+function ptStatus(txt, warn) { var e = $('#ptst'); if (e) { e.textContent = txt; e.className = warn ? 'warn' : ''; } }
+function ptShow() {
+  var el = PT.el; if (!el) { el = PT.el = document.createElement('div'); el.id = 'ptype'; $('#app').appendChild(el); }
+  var url = ntfyBase() + '/' + ptTopic();
+  if (!PT.svg || PT.url !== url) { PT.url = url; try { PT.svg = window.QRCode.svg(url, 200); } catch (e) { PT.svg = ''; } }
+  el.innerHTML = '<div class="ptq">' + PT.svg + '</div><div class="ptt"><b>📱 ' + esc(t('ptT')) + '</b><span>' + esc(t('ptS')) + '</span><i id="ptst">' + esc(t('ptWait')) + '</i></div>';
+  el.style.display = 'flex'; PT.act = true; PT.at = Date.now(); PT.fails = 0; PT.tok++; ptPoll(PT.tok, 400);
+}
+function ptHide() { PT.act = false; PT.tok++; clearTimeout(PT.timer); if (PT.el) PT.el.style.display = 'none'; }
+function ptUrls() {
+  var base = ntfyBase(), sec = Math.min(900, Math.round((Date.now() - PT.at) / 1000) + 12);   // only what was sent while the QR is up (server-side window, the TV clock does not matter)
+  var u = base + '/' + ptTopic() + '/json?poll=1&since=' + sec + 's', l = [u], rel = T.relayOf ? T.relayOf(S.acc || {}) : '';
+  if (/^https:/i.test(base)) l.push(u.replace(/^https:/i, 'http:'));
+  if (rel) l.push(rel + '/?u=' + encodeURIComponent(u) + '&h=' + encodeURIComponent('{}'));
+  return l;
+}
+function fire(el, n) { var ev; try { ev = new Event(n, { bubbles: true }); } catch (e) { ev = document.createEvent('Event'); ev.initEvent(n, true, true); } el.dispatchEvent(ev); }
+function ptApply(text) {
+  var inp = PT.inp; if (!inp) return;
+  text = String(text).replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').replace(/^\s+|\s+$/g, '').slice(0, 300); if (!text) return;
+  inp.value = text; fire(inp, 'input'); fire(inp, 'change');
+  try { if (document.activeElement === inp) inp.setSelectionRange(inp.value.length, inp.value.length); } catch (e) {}
+  toast('📱 ' + text, 1800);
+}
+function ptPoll(tok, wait) {
+  clearTimeout(PT.timer);
+  PT.timer = setTimeout(function () {
+    if (tok !== PT.tok) return;
+    var l = ptUrls(), idx = PT.vi < l.length ? PT.vi : 0;
+    rawGet(l[idx], 6000).then(function (txt) {
+      if (tok !== PT.tok) return;
+      var got = null; PT.vi = idx; if (PT.fails) { PT.fails = 0; ptStatus(t('ptWait')); }
+      String(txt || '').split('\n').forEach(function (ln) {
+        if (!ln) return; var j; try { j = JSON.parse(ln); } catch (e) { return; }
+        if (j.event !== 'message' || j.message == null || PT.seen[j.id]) return; PT.seen[j.id] = 1; got = String(j.message);
+      });
+      if (got !== null) { ptApply(got); ptStatus('✓ ' + t('ptGot')); }
+      ptPoll(tok, 1600);
+    }, function () {
+      if (tok !== PT.tok) return; PT.vi = (idx + 1) % l.length;
+      if (++PT.fails > l.length) ptStatus(t('qrNoNet') + ' — ' + Q.err, true);
+      ptPoll(tok, 2500);
+    });
+  }, wait);
+}
+setInterval(function () {
+  var inp = ptAllowed() ? ptTarget() : null;
+  PT.inp = inp;
+  if (!!inp !== PT.act) { if (inp) ptShow(); else ptHide(); }
+}, 450);
+// a finger on the screen means a phone / tablet: it has its own keyboard
+document.addEventListener('touchstart', function () { if (!PT.touch) { PT.touch = true; ptHide(); } }, true);
+
 T.keys.qr = function (k) {
   if (k === 'back') { stopPoll(); T.showAccounts(); return; }
   if (k === 'yellow') openQr();

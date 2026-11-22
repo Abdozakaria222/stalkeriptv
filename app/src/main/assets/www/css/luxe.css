@@ -129,7 +129,7 @@ html.perf #s-full .ibar{-webkit-transform:none;transform:none}
 /* ---- library screen ---- */
 #s-lib{direction:ltr;background:#070d18}
 #s-lib .lgbg{position:absolute;left:400px;top:0;right:0;bottom:0;background:linear-gradient(160deg,#101f3d 0%,#0a1428 55%,#070d18 100%)}
-#s-lib .ltabs{position:absolute;left:40px;top:34px;width:330px;height:62px;display:flex;gap:14px}
+#s-lib .ltabs{position:absolute;left:40px;top:34px;width:330px;height:62px;display:flex}#s-lib .ltabs>*+*{-webkit-margin-start:14px;margin-inline-start:14px}
 #s-lib .ltab{flex:1;height:62px;line-height:62px;text-align:center;border-radius:31px;font-size:26px;font-weight:700;color:#8fa1b8;background:rgba(255,255,255,.05);border:2px solid transparent}
 #s-lib .ltab.cur{color:#fff;border-color:rgba(255,255,255,.4)}
 #s-lib .ltab.focus{background:#22d3ee;color:#04202a;border-color:#22d3ee}
@@ -257,3 +257,30 @@ html.wide body.e2 .keys{width:calc(900px + var(--cx,0px))}
 html.wide body.e2 .lhdr{width:calc(560px + var(--cx,0px))}
 html.wide #s-lib .lhead{width:calc(1380px + var(--cx,0px))}
 html.wide #s-lib .lgrid{width:calc(1440px + var(--cx,0px))}
+
+/* subscription line on the home screen */
+.hubsub{position:absolute;left:215px;top:121px;font-size:23px;line-height:32px;color:var(--dim);direction:rtl;white-space:nowrap}
+html[dir=ltr] .hubsub,.en .hubsub{direction:ltr}
+.hubsub.warn{color:#fbbf24;font-weight:700}
+
+/* stream info panel */
+#sinfo{position:absolute;left:60px;top:60px;z-index:60;min-width:620px;max-width:900px;padding:26px 32px 20px;border-radius:22px;background:rgba(8,13,22,.92);border:1px solid rgba(34,211,238,.35);box-shadow:0 18px 50px rgba(0,0,0,.5);display:none;direction:rtl}
+#sinfo .sit{font-size:30px;font-weight:800;color:#22d3ee;margin-bottom:14px}
+#sinfo .sir{display:flex;justify-content:space-between;font-size:25px;line-height:44px;border-bottom:1px solid rgba(255,255,255,.06)}
+#sinfo .sir span{color:var(--dim)}#sinfo .sir b{font-weight:700;direction:ltr;unicode-bidi:plaintext;-webkit-margin-start:30px;margin-inline-start:30px}
+#sinfo .sih{margin-top:12px;font-size:19px;color:var(--dim);text-align:center}
+.en #sinfo,html[dir=ltr] #sinfo{direction:ltr}
+
+/* type from the phone (QR beside the selected text box) */
+#ptype{position:absolute;top:24px;right:28px;z-index:62;display:none;align-items:center;padding:16px 26px 16px 16px;max-width:660px;background:rgba(10,15,24,.95);border:2px solid rgba(34,211,238,.55);border-radius:22px;box-shadow:0 18px 50px rgba(0,0,0,.55);direction:rtl}
+html[dir=ltr] #ptype,.en #ptype{direction:ltr}
+#ptype .ptq{flex:none;width:200px;height:200px;padding:8px;background:#fff;border-radius:12px}
+#ptype .ptq svg{display:block;width:200px;height:200px}
+#ptype .ptt{display:flex;flex-direction:column;margin:0 22px;min-width:300px;color:#e9f0fa}
+#ptype .ptt b{font-size:33px;line-height:44px}
+#ptype .ptt span{font-size:24px;line-height:33px;color:#a9b6c8;margin-top:8px}
+#ptype .ptt i{font-style:normal;font-size:23px;line-height:32px;color:#22d3ee;margin-top:12px}
+#ptype .ptt i.warn{color:#fbbf24}
+
+/* menu rows stay on one line (long names end with …) */
+#pmenu .pmi span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

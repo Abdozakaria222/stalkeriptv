@@ -16,7 +16,11 @@ FX.prototype.open = function (m, u) { this._m = m || 'GET'; this._u = String(u);
 FX.prototype.setRequestHeader = function (k, v) { this._h[k] = v; };
 FX.prototype.getResponseHeader = function (k) { var v = this._rh[String(k).toLowerCase()]; return v == null ? null : v; };
 FX.prototype.abort = function () { if (this._id) { try { AN.cancel(this._id); } catch (e) {} delete REQ[this._id]; this._id = 0; } };
-FX.prototype.send = function () { var id = ++nid; this._id = id; REQ[id] = this; AN.request(id, this._m, this._u, JSON.stringify(this._h), this.timeout || 20000); };
+FX.prototype.send = function (b) {
+  var id = ++nid; this._id = id; REQ[id] = this;
+  if (b != null && b !== '' && AN.requestBody) AN.requestBody(id, this._m, this._u, JSON.stringify(this._h), this.timeout || 20000, String(b));
+  else AN.request(id, this._m, this._u, JSON.stringify(this._h), this.timeout || 20000);
+};
 window.__net = { done: function (id, status, hdrs) {
   var x = REQ[id]; if (!x) return; delete REQ[id]; x._id = 0;
   if (status < 0) { x.status = 0; x.readyState = 4; var f = status === -2 ? (x.ontimeout || x.onerror) : x.onerror; if (f) f.call(x); return; }
@@ -61,6 +65,7 @@ window.webapis = { avplay: {
   getTotalTrackInfo: function () { try { return JSON.parse(AP.tracks()); } catch (e) { return []; } },
   setSelectTrack: function (type, idx) { AP.selectTrack(String(type), idx | 0); },
   setSilentSubtitle: function (b) { AP.silentSub(!!b); },
+  __info: function () { var j = {}; try { j = JSON.parse(AP.info() || '{}'); } catch (e) {} return j; },
   setSubtitlePosition: function (ms) { if (window.__aeng === 'vlc') { AP.spuDelay(+ms || 0); return; } throw new Error('NotSupportedError'); }
 } };
 window.tizen = { application: { getCurrentApplication: function () { return { exit: function () { AP.exit(); } }; } } };

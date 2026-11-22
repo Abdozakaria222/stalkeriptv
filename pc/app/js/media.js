@@ -17,6 +17,8 @@ var AR = {
   aspect: 'ملاءمة الشاشة', aspFit: 'تلقائي (الأصلي)', aspFill: 'تمديد لملء الشاشة', aspZoom: 'تكبير (قص الأطراف)', asp169: 'عرض 16:9', asp43: 'عرض 4:3', asp219: 'عرض 21:9', aspNote: 'يغيّر طريقة عرض الصورة لتناسب شاشتك: تمديد يملأ الشاشة، وتكبير يقصّ الأطراف بدون أشرطة سوداء.', perf: 'وضع الأداء (أسرع)', perfNote: 'يوقف الحركات والانتقالات لتنقّل فوري، ويُنصح به في التلفزيونات الضعيفة.', qualNote: 'تنطبق الجودة على بثوث HLS فقط، أما باقي الصيغ فلها جودة واحدة.', engine: 'محرك التشغيل', engAuto: 'تلقائي', aEngineNote: 'VLC: مدمج في التطبيق، بيشغّل أي صيغة والترجمة بتظهر منه مباشرة. ExoPlayer: المشغل السابق (يدعم ترجمة الترجمة لأي لغة). لو VLC ماقدرش يفتح قناة، التطبيق بيحوّل لـ ExoPlayer لوحده.', engBuilt: 'المدمج', engVlcWin: 'VLC (نافذة منفصلة)', pcPlayerNote: 'VLC: مدمج في البرنامج، يشغّل جوه نفس النافذة والترجمة بتطلع منه بدون تأخير. ffmpeg: المشغل القديم (يدعم ترجمة الترجمة لأي لغة). VLC (نافذة منفصلة): لو VLC جوه النافذة مش ظاهر.', engineNote: 'AVPlay (الافتراضي): الأسرع والترجمة المدمجة تعمل. تلقائي/HTML5: قد يكون التقديم أسلس لكن الترجمة المدمجة في الملف لا تظهر على التلفزيون.', fastNote: 'يقلل زمن الانتظار قبل ظهور الصورة، وقد يزيد التقطيع على الإنترنت الضعيف.',
   vpnT: 'VPN / تجاوز الحجب', vpnMode: 'وضع الـ VPN', vpnOff: 'إيقاف', vpnAuto: 'تلقائي (عند الحجب فقط)', vpnAlways: 'دائماً (كل الاتصالات)', vpnVideo: 'تمرير الفيديو عبر الـ VPN', vpnAddr: 'عنوان خادم الـ VPN (الريلاي)', vpnTest: 'اختبار الاتصال', vpnNone: 'غير مضبوط', vpnWait: 'جاري الاختبار…', vpnOkT: 'يعمل ✓', vpnBadT: 'لا يرد ✗', vpnModeNote: 'تلقائي: يتصل مباشرة، ولو اتحجب يحوّل للخادم. دائماً: كل الطلبات (القنوات والأفلام والدليل والترجمة) تمر عبر الخادم.', vpnVideoNote: 'يمرّر البث نفسه عبر الخادم لتجاوز حجب الهوست. يحتاج خادماً سريعاً، وقد يبطّئ البث.', vpnAddrNote: 'عنوان جهاز على شبكتك أو سيرفر خارجي شغّال عليه relay.js، مثل http://192.168.1.10:8787', vpnAbout: 'تلفزيون سامسونج لا يسمح بتشغيل VPN حقيقي على الجهاز، فالتطبيق يمرّر اتصالاته عبر خادم وسيط (ريلاي) تشغّله على جهاز/سيرفر داخل VPN أو في بلد آخر، فيتجاوز الحجب.', chWord: 'قناة', movWord: 'فيلم', serWord: 'مسلسل', catWord: 'قسم', itemsWord: 'عنصر', editAcc: 'تعديل الحساب الحالي', relayRow: 'إعداد الريلاي',
   hintRows: 'للتفاصيل', hintSeek: 'تقديم / ترجيع', hintPause: 'إيقاف مؤقت', hintMenu: 'الجودة والصوت', playingNext: 'الحلقة التالية…', changed: 'الجودة', retryHint: 'تعذّر التشغيل. جرّب جودة أخرى (▲) أو ارجع.',
+  tools: 'أدوات', streamInfo: 'معلومات البث', siEngine: 'المشغّل', siVideo: 'الصورة', siAudio: 'الصوت', siRate: 'سرعة البث', siBuf: 'المخزّن مقدماً', siDrop: 'إطارات ضايعة', siOf: 'من', siServer: 'السيرفر', siKind: 'النوع', siLive: 'بث مباشر', siVod: 'فيلم / حلقة', siCh: 'قناة', siSec: 'ث', siClose: 'أي زرار للإغلاق',
+  subT: 'الاشتراك', subUntil: 'حتى', subLeft: 'باقي', subDays: 'يوم', subToday: 'بينتهي النهارده', subEnded: 'منتهي', subUnlimited: 'غير محدود', subDev: 'أجهزة', subTrial: 'تجريبي', subWarn: 'الاشتراك هينتهي خلال',
   hello: 'أهلاً بك', q1080: '1080p', watched: 'تمت المشاهدة', sNum: 'م', eNum: 'ح'
 };
 var EN = {
@@ -29,6 +31,8 @@ var EN = {
   aspect: 'Screen fit', aspFit: 'Auto (original)', aspFill: 'Stretch to fill', aspZoom: 'Zoom (crop edges)', asp169: 'Force 16:9', asp43: 'Force 4:3', asp219: 'Force 21:9', aspNote: 'Changes how the picture fits your screen: stretch fills it, zoom crops the edges with no black bars.', perf: 'Performance mode (faster)', perfNote: 'Turns off animations and transitions for instant navigation; recommended on weaker TVs.', qualNote: 'Quality applies to HLS streams only; other formats have a single quality.', engine: 'Playback engine', engAuto: 'Auto', aEngineNote: 'VLC: built into the app, plays any format and draws the subtitles itself. ExoPlayer: the previous engine (supports translating subtitles). If VLC cannot open a stream the app switches to ExoPlayer by itself.', engBuilt: 'Built-in', engVlcWin: 'VLC (separate window)', pcPlayerNote: 'VLC: built into the app, plays inside this window with its own subtitles (no delay). ffmpeg: the previous engine (supports translating subtitles). VLC (separate window): if VLC inside the window does not show.', engineNote: 'AVPlay (default): fastest, and embedded subtitles work. Auto/HTML5: seeking may be smoother, but subtitles embedded in the file will not show on the TV.', fastNote: 'Shortens the wait before the picture appears; may stutter on slow internet.',
   vpnT: 'VPN / bypass blocking', vpnMode: 'VPN mode', vpnOff: 'Off', vpnAuto: 'Auto (only when blocked)', vpnAlways: 'Always (all connections)', vpnVideo: 'Send video through the VPN', vpnAddr: 'VPN server address (relay)', vpnTest: 'Test connection', vpnNone: 'Not set', vpnWait: 'Testing…', vpnOkT: 'Working ✓', vpnBadT: 'No reply ✗', vpnModeNote: 'Auto: connects directly and switches to the server if blocked. Always: every request (channels, movies, guide, subtitles) goes through the server.', vpnVideoNote: 'Sends the stream itself through the server to bypass host blocking. Needs a fast server and may slow playback.', vpnAddrNote: 'Address of a device on your network or an outside server running relay.js, e.g. http://192.168.1.10:8787', vpnAbout: 'Samsung TVs do not allow a real VPN on the device, so the app sends its connections through a relay server that you run on a device/server behind a VPN or in another country, which bypasses the blocking.', chWord: 'channels', movWord: 'movies', serWord: 'series', catWord: 'categories', itemsWord: 'items', editAcc: 'Edit current account', relayRow: 'Relay setup',
   hintRows: 'Details', hintSeek: 'Seek', hintPause: 'Pause', hintMenu: 'Quality & audio', playingNext: 'Next episode…', changed: 'Quality', retryHint: 'Could not play. Try another quality (▲) or go back.',
+  tools: 'Tools', streamInfo: 'Stream info', siEngine: 'Player', siVideo: 'Video', siAudio: 'Audio', siRate: 'Bitrate', siBuf: 'Buffered ahead', siDrop: 'Dropped frames', siOf: 'of', siServer: 'Server', siKind: 'Type', siLive: 'Live', siVod: 'Movie / episode', siCh: 'ch', siSec: 's', siClose: 'any key to close',
+  subT: 'Subscription', subUntil: 'until', subLeft: '', subDays: 'days left', subToday: 'ends today', subEnded: 'expired', subUnlimited: 'unlimited', subDev: 'devices', subTrial: 'trial', subWarn: 'Subscription ends in',
   hello: 'Welcome', q1080: '1080p', watched: 'Watched', sNum: 'S', eNum: 'E'
 };
 (function () { var k; for (k in AR) T.I18N.ar[k] = AR[k]; for (k in EN) T.I18N.en[k] = EN[k]; })();
@@ -94,11 +98,17 @@ X.vodPage = function (kind, cat, page, search, sort) {
     return slice(arr);
   });
 };
+/* TMDB id of a title: given directly, or hidden in the "kinopoisk_url" field (many panels put the TMDB page there) */
+function xId(v, url, kind) {
+  var n = String(v == null ? '' : v).replace(/\D/g, ''); if (n && n !== '0') return n;
+  var m = String(url || '').match(/themoviedb\.org\/(movie|tv)\/(\d+)/); return m && (m[1] === kind) ? m[2] : '';
+}
 X.vodInfo = function (it) {
   return this.req('get_vod_info', { vod_id: it.id }).then(function (j) {
     var i = (j && j.info) || {}, md = (j && j.movie_data) || {};
     return { plot: i.plot || i.description || '', cast: i.cast || i.actors || '', director: i.director || '', genre: i.genre || '', year: String(i.releasedate || i.releaseDate || '').slice(0, 4),
-      rating: i.rating || '', dur: i.duration || '', backdrop: (i.backdrop_path && i.backdrop_path[0]) || '', poster: i.movie_image || '', ext: md.container_extension };
+      rating: i.rating || '', dur: i.duration || '', backdrop: (i.backdrop_path && i.backdrop_path[0]) || '', poster: i.movie_image || '', ext: md.container_extension,
+      tmdb: xId(i.tmdb_id || i.tmdb, i.kinopoisk_url, 'movie'), imdb: String(i.imdb_id || '').replace(/\D/g, ''), oname: i.o_name || i.original_name || i.name || '' };
   }).catch(function () { return {}; });
 };
 X.seriesInfo = function (it) {
@@ -108,11 +118,13 @@ X.seriesInfo = function (it) {
     Object.keys(eps).sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (k) {
       seasons.push({ n: Number(k) || 1, eps: (eps[k] || []).map(function (e) {
         var inf = e.info || {};
-        return { id: String(e.id), num: Number(e.episode_num) || 0, title: e.title || '', ext: e.container_extension || 'mp4', dur: inf.duration || '', img: inf.movie_image || '', plot: inf.plot || '' };
+        return { id: String(e.id), num: Number(e.episode_num) || 0, title: e.title || '', ext: e.container_extension || 'mp4', dur: inf.duration || '', img: inf.movie_image || '', plot: inf.plot || '',
+          tmdb: String(inf.tmdb_id || '').replace(/\D/g, '') };
       }) });
     });
     return { plot: i.plot || '', cast: i.cast || '', director: i.director || '', genre: i.genre || '', year: String(i.releaseDate || '').slice(0, 4), rating: i.rating || '',
-      backdrop: (i.backdrop_path && i.backdrop_path[0]) || '', poster: i.cover || '', seasons: seasons };
+      backdrop: (i.backdrop_path && i.backdrop_path[0]) || '', poster: i.cover || '', seasons: seasons,
+      tmdb: xId(i.tmdb || i.tmdb_id, i.kinopoisk_url, 'tv'), oname: i.o_name || i.original_name || i.name || '' };
   }).catch(function () { return { seasons: [] }; });
 };
 X.vodLink = function (m) {
@@ -124,7 +136,7 @@ function stNorm(c, kind) {
   if (!c || !c.name) return null;
   var eps = Array.isArray(c.series) ? c.series : [];
   return { kind: (kind === 'series' || eps.length) ? 'series' : 'movie', id: String(c.id), name: String(c.name).replace(/^\s+|\s+$/g, ''), poster: absUrl(c.screenshot_uri || c.cover || c.logo || ''),
-    cmd: c.cmd || '', plot: c.description || '', year: String(c.year || '').slice(0, 4), rating: c.rating_imdb || c.rating_kinopoisk || '', genre: c.genre_str || '', cast: c.actors || '',
+    cmd: c.cmd || '', plot: c.description || '', year: String(c.year || '').slice(0, 4), rating: c.rating_imdb || c.rating_kinopoisk || '', genre: c.genre_str || '', cast: c.actors || '', oname: c.o_name || '',
     director: c.director || '', dur: c.time ? String(c.time) : '', eps: eps, cat: String(c.category_id || ''), added: 0 };
 }
 function stType(kind) { return kind === 'series' ? 'series' : 'vod'; }
@@ -140,10 +152,10 @@ P.vodPage = function (kind, cat, page, search, sort) {
     return { items: d.map(function (c) { return stNorm(c, kind); }).filter(Boolean), total: Number(js && js.total_items) || 0 };
   });
 };
-P.vodInfo = function (it) { return Promise.resolve({ plot: it.plot, cast: it.cast, director: it.director, genre: it.genre, year: it.year, rating: it.rating, dur: it.dur }); };
+P.vodInfo = function (it) { return Promise.resolve({ plot: it.plot, cast: it.cast, director: it.director, genre: it.genre, year: it.year, rating: it.rating, dur: it.dur, oname: it.oname || '' }); };
 P.seriesInfo = function (it) {
   var eps = [], i; for (i = 0; i < it.eps.length; i++) { var no = Number(it.eps[i]) || (i + 1); eps.push({ id: it.id + ':' + no, num: no, title: '', ser: no, ext: '', dur: '', img: '', plot: '' }); }
-  return Promise.resolve({ plot: it.plot, cast: it.cast, director: it.director, genre: it.genre, year: it.year, rating: it.rating, seasons: [{ n: 1, eps: eps }] });
+  return Promise.resolve({ plot: it.plot, cast: it.cast, director: it.director, genre: it.genre, year: it.year, rating: it.rating, oname: it.oname || '', seasons: [{ n: 1, eps: eps }] });
 };
 P.vodLink = function (m) {
   return this.call('vod', 'create_link', { cmd: m.cmd, series: m.ser || '', forced_storage: '', disable_ad: 0, download: 0, force_ch_link_check: 0 }, true)
@@ -222,7 +234,7 @@ function openHub() {
 function renderHub(pref) {
   T.applyLang();
   var s = $('#s-hub'), h = '', hist = Hist.all().slice(0, 5);
-  h += '<div class="brand"><span class="mark"></span><b>Stalker<span>TV</span></b></div><div class="hubacc">' + esc(S.acc.name) + '</div><div class="hubclock" id="hclock">' + clockTxt() + '</div>';
+  h += '<div class="brand"><span class="mark"></span><b>Stalker<span>TV</span></b></div><div class="hubacc">' + esc(S.acc.name) + '</div><div class="hubclock" id="hclock">' + clockTxt() + '</div><div class="hubsub" id="hsub"></div>';
   h += '<div class="hubhello">' + esc(t('hello')) + '</div><div class="tiles">';
   TILES.forEach(function (x) {
     h += '<div class="tile f" data-act="' + x.k + '"><div class="tbg" style="background:' + x.g + '"></div><div class="tic">' + ICONS[x.k] + '</div><div class="tn">' + esc(t(x.t)) + '</div><div class="cnt" id="cnt-' + x.k + '"></div></div>';
@@ -241,8 +253,51 @@ function renderHub(pref) {
   h += T.hintBar([['', 'OK', t('open')], ['', '⟲', t('back')]]);
   s.innerHTML = h;
   Nav.init(s, pref || '.tile[data-act="live"]');
-  updateCounts();
+  updateCounts(); loadSub();
   clearTimeout(renderHub.t); renderHub.t = setTimeout(function () { var c = $('#hclock'); if (c && S.screen === 'hub') c.textContent = clockTxt(); }, 30000);
+}
+/* ---------- subscription: end date, devices, a warning in the last week ---------- */
+var Sub = { acc: '', at: 0, info: null };
+function parseEnd(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number' || /^\d{9,13}$/.test(String(v))) { var n = Number(v); return new Date(n < 1e12 ? n * 1000 : n); }
+  var x = String(v).trim(), m;
+  if ((m = x.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/))) return new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 23), +(m[5] || 59));
+  if ((m = x.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})(?:[ ,]+(\d{1,2}):(\d{2}))?/))) return new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 23), +(m[5] || 59));
+  var d = new Date(x.replace(/,\s*(\d{1,2}:\d{2}\s*[ap]m)$/i, ' $1')); return isNaN(d.getTime()) ? null : d;
+}
+function loadSub() {
+  var acc = S.acc; if (!acc || !S.portal || !S.portal.accountInfo) return;
+  if (Sub.acc === acc.id && Sub.info && Date.now() - Sub.at < 30 * 60 * 1000) { showSub(); return; }
+  S.portal.accountInfo().then(function (inf) {
+    if (S.acc !== acc || !inf) return;
+    var end = inf.unlimited ? 'u' : parseEnd(inf.exp || inf.end_date || inf.expire_billing_date || inf.tariff_expired_date || inf.phone);
+    Sub.acc = acc.id; Sub.at = Date.now(); Sub.info = { end: end, max: Number(inf.max) || 0, active: inf.active != null && inf.active !== '' ? Number(inf.active) : null, trial: !!inf.trial };
+    showSub();
+  }).catch(noop);
+}
+function daysTxt(n, bare) {               // Arabic counts: يوم واحد / يومين / 3-10 أيام / 11+ يوم
+  if (T.getLang() !== 'ar') return n + (n === 1 ? ' day' : ' days') + (bare ? '' : ' left');
+  return n === 1 ? 'يوم واحد' : n === 2 ? 'يومين' : n <= 10 ? n + ' أيام' : n + ' يوم';
+}
+function showSub() {
+  var el = $('#hsub'), i = Sub.info; if (!el || S.screen !== 'hub' || !i) return;
+  var parts = [], warn = false, days = null;
+  if (i.end === 'u') parts.push(t('subT') + ': ' + t('subUnlimited'));
+  else if (i.end) {
+    var d0 = new Date(), d1 = new Date(i.end.getTime()); d0.setHours(12, 0, 0, 0); d1.setHours(12, 0, 0, 0);   // calendar days (ends on the 25th, today the 22nd -> 3)
+    days = i.end.getTime() < Date.now() ? -1 : Math.round((d1 - d0) / 86400000);
+    var ds; try { ds = i.end.toLocaleDateString(T.getLang() === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { ds = i.end.toDateString(); }
+    if (days < 0) { parts.push(t('subT') + ': ' + t('subEnded') + ' (' + ds + ')'); warn = true; }
+    else { parts.push(t('subT') + ' ' + t('subUntil') + ' ' + ds); parts.push(days === 0 ? t('subToday') : (t('subLeft') ? t('subLeft') + ' ' : '') + daysTxt(days)); warn = days <= 7; }
+  }
+  if (i.max) parts.push((i.active != null ? i.active + '/' : '') + i.max + ' ' + t('subDev'));
+  if (i.trial) parts.push(t('subTrial'));
+  el.textContent = parts.join('  ·  '); el.className = 'hubsub' + (warn ? ' warn' : '');
+  if (warn && days != null && days >= 0) {                     // once a day
+    var k = 'subWarn_' + S.acc.id, today = new Date().toDateString();
+    if (Store.get(k, '') !== today) { Store.set(k, today); T.toast('⚠ ' + (days === 0 ? t('subToday') : t('subWarn') + ' ' + daysTxt(days, true)) + ' — ' + S.acc.name, 6000); }
+  }
 }
 function updateCounts() {
   if (S.screen !== 'hub') return;
@@ -680,7 +735,7 @@ function playEpisode(si, ei, ms) {
 }
 function startVod(ctx, ms) {
   var tok = ++V.tok; V.ctx = ctx; V.info = null; V.dur = 0; V.paused = false; V.seekAcc = 0; V.lastSave = 0; T.Subs.reset();
-  if (!Prefs.resume) ms = 0;
+  if (!Prefs.resume) ms = 0; V.startMs = ms || 0;
   go('vod'); renderVod(); T.stageMsg('load', t('tuning')); showVodOsd(true);
   if (!vodMeta().plot) { var it0 = ctx.item; (it0.kind === 'series' ? S.portal.seriesInfo(it0) : S.portal.vodInfo(it0)).then(function (inf) { if (tok !== V.tok || !inf) return; V.info = inf; refreshVodMeta(); }).catch(function () {}); }
   S.portal.vodLink(ctx.meta).then(function (url) {
@@ -689,10 +744,17 @@ function startVod(ctx, ms) {
       onState: function (st) { if (tok !== V.tok) return; if (st === 'buffering') T.stageMsg('load', t('buffering')); else if (st === 'playing') { T.stageMsg(null); showVodOsd(); } },
       onError: function () { if (tok !== V.tok) return; T.stageMsg('err', t('playErr') + '\n' + t('retryHint')); showVodOsd(true); },
       onEnd: function () { if (tok === V.tok) vodEnded(); },
-      onReady: function () { if (tok !== V.tok) return; V.dur = Player.dur; updateVodBar(Player.ms); var tt = $('#vtot'); if (tt) tt.textContent = fmtMs(V.dur); T.Subs.ready(); Quality.load(Player.master || Player.url).then(function () { if (tok === V.tok) refreshVq(); }); }
+      onReady: function () { if (tok !== V.tok) return; V.dur = Player.dur; updateVodBar(Player.ms); var tt = $('#vtot'); if (tt) tt.textContent = fmtMs(V.dur); T.Subs.ready(); if (T.Subs.vodReady) T.Subs.vodReady(); Quality.load(Player.master || Player.url).then(function () { if (tok === V.tok) refreshVq(); }); }
     }, { vod: true, startMs: ms || 0, onTime: function (m) { if (tok === V.tok) onVodTime(m); }, onSub: function (txt, d) { if (tok === V.tok) T.Subs.cue(txt, d); } });
   });
 }
+/* what is playing (title, year, TMDB id, season / episode) for the subtitle search */
+T.vodCtx = function () {
+  var c = V.ctx; if (!c) return null;
+  var it = c.item, inf = V.info || (Dt.it && Dt.it.id === it.id && Dt.info) || {}, ep = c.ep || {};
+  return { key: c.key, kind: c.kind, name: it.name || '', oname: inf.oname || it.oname || '', year: String(inf.year || it.year || ''), tmdb: inf.tmdb || '', imdb: inf.imdb || '',
+    season: c.season || 1, ep: c.kind === 'episode' ? (ep.num || (c.ei + 1)) : 0, eptmdb: ep.tmdb || '', title: c.title, sub: c.sub, tok: V.tok, startMs: V.startMs || 0 };
+};
 /* metadata shown in the infobar: plot, year, rating, genre (loaded on demand when resuming straight from the hub) */
 function vodMeta() {
   var c = V.ctx, it = c.item, inf = V.info || (Dt.it && Dt.it.id === it.id && Dt.info) || {}, ep = c.ep || {};
@@ -800,9 +862,13 @@ function buildMenu() {
   else if (vs) it.push({ l: t('onlyOne'), dis: true });
   it.push({ hdr: true, l: t('aspect') });
   ASPK.forEach(function (k) { it.push({ l: aspLabel(k), sel: (Prefs.aspect || 'fit') === k, asp: k }); });
+  it.push({ hdr: true, l: t('tools') }); it.push({ l: 'ℹ  ' + t('streamInfo'), info: 1 });
   var au = Player.tracks('AUDIO');
   if (au.length > 1) { it.push({ hdr: true, l: t('audio') }); au.forEach(function (a) { it.push({ l: a.label, au: a.index }); }); }
-  T.Subs.menuItems().forEach(function (x) { it.push(x); });
+  var si = T.Subs.menuItems(), oi = Menu.mode === 'vod' && T.Subs.onlineItems ? T.Subs.onlineItems() : [], at = -1;
+  si.forEach(function (x, k) { if (at < 0 && x.hdr && x.l === t('subTo')) at = k; });
+  if (at < 0) at = si.length;
+  si.slice(0, at).concat(oi, si.slice(at)).forEach(function (x) { it.push(x); });
   if (Menu.mode === 'vod' && V.ctx && V.ctx.kind === 'episode') {
     it.push({ hdr: true, l: t('episode') }); it.push({ l: '⏭ ' + t('nextEp'), nav: 1 }); it.push({ l: '⏮ ' + t('prevEp'), nav: -1 });
   }
@@ -815,10 +881,10 @@ function showMenu() {
   var n = Menu.items.length, VIS = 9, st = Menu.top || 0;
   if (Menu.free) st = Math.max(0, Math.min(st, Math.max(0, n - VIS)));
   else if (Menu.idx < st + 1) st = Math.max(0, Menu.idx - 1); else if (Menu.idx > st + VIS - 2) st = Math.min(Math.max(0, n - VIS), Menu.idx - VIS + 2);
-  if (!Menu.free && st > 0 && Menu.items[st] && !Menu.items[st].hdr) { var hh = st; while (hh > 0 && !Menu.items[hh - 1].hdr) hh--; if (hh > 0 && st - hh < 3) st = hh - 1; }
+  if (!Menu.free && st > 0 && Menu.items[st] && !Menu.items[st].hdr) { var hh = st; while (hh > 0 && !Menu.items[hh - 1].hdr) hh--; if (hh > 0 && st - hh < 3 && Menu.idx <= hh + VIS - 2) st = hh - 1; }   // show the section title too, unless that hides the focused row
   Menu.top = st;
   m.innerHTML = '<div class="pmt">' + esc(t('menuTitle')) + '</div>' + (st > 0 ? '<div class="pmmore">▲</div>' : '<div class="pmmore">&nbsp;</div>') + Menu.items.slice(st, st + VIS).map(function (x, k) {
-    var i = st + k; return x.hdr ? '<div class="pmh">' + esc(x.l) + '</div>' : '<div data-i="' + i + '" class="pmi' + (i === Menu.idx ? ' focus' : '') + (x.dis ? ' dis' : '') + '">' + (x.sel ? '<b>✓</b>' : '<b></b>') + '<span>' + esc(x.l) + '</span></div>';
+    var i = st + k; return x.hdr ? '<div class="pmh">' + esc(x.l) + '</div>' : '<div data-i="' + i + '" class="pmi' + (i === Menu.idx ? ' focus' : '') + (x.dis ? ' dis' : '') + '">' + (x.sel ? '<b>✓</b>' : '<b></b>') + '<span>' + esc(x.l) + (x.ltr ? ' · <bdi dir="ltr">' + esc(x.ltr) + '</bdi>' : '') + '</span></div>';
   }).join('') + (st + VIS < n ? '<div class="pmmore">▼</div>' : '');
 }
 function stepMenu(d) {
@@ -827,6 +893,7 @@ function stepMenu(d) {
   Menu.idx = i;
 }
 function closeMenu() { Menu.open = false; $('#pmenu').style.display = 'none'; }
+T.menuRefresh = function () { if (Menu.open) { buildMenu(); showMenu(); } };
 Menu.key = function (k) {
   if (k === 'up' || k === 'down') Menu.free = false;
   if (k === 'back' || k === 'yellow') { closeMenu(); return; }
@@ -834,12 +901,52 @@ Menu.key = function (k) {
   if (k === 'down') { stepMenu(1); showMenu(); return; }
   if (k !== 'ok') return;
   var x = Menu.items[Menu.idx]; if (!x || x.hdr || x.dis) return;
+  var oa = T.Subs.onlineAct ? T.Subs.onlineAct(x) : false; if (oa === 'keep') { buildMenu(); showMenu(); return; } if (oa) { closeMenu(); return; }
   var sa = T.Subs.menuAct(x); if (sa === 'keep') { buildMenu(); showMenu(); return; } if (sa) { closeMenu(); return; }
   if (x.asp) { Prefs.aspect = x.asp; T.savePrefs(); Player.applyAspect(); closeMenu(); toast(t('aspect') + ': ' + x.l, 1600); return; }
   if (x.q !== undefined) { closeMenu(); Player.setVariant(x.q); toast(t('changed') + ': ' + x.l, 1600); T.stageMsg('load', t('buffering')); return; }
   if (x.au !== undefined) { Player.selectTrack('AUDIO', x.au); closeMenu(); return; }
+  if (x.info) { closeMenu(); showInfo(); return; }
   if (x.nav) { closeMenu(); var c = V.ctx; if (c && c.kind === 'episode') { var se = Dt.seasons[c.si], ni = c.ei + x.nav; if (se && se.eps[ni]) { saveProgress(Player.ms); playEpisode(c.si, ni, 0); } } }
 };
+
+/* ---------- stream info panel ---------- */
+function prettyCodec(c) {
+  c = String(c || ''); var l = c.toLowerCase();
+  if (/avc|h\.?264/.test(l)) return 'H.264'; if (/hevc|hvc1|hev1|h\.?265/.test(l)) return 'H.265'; if (/mpeg2|mp2v|mpgv/.test(l)) return 'MPEG-2';
+  if (/vp9|vp09/.test(l)) return 'VP9'; if (/av01|av1/.test(l)) return 'AV1'; if (/mp4a|aac/.test(l)) return 'AAC'; if (/eac3|ec-3/.test(l)) return 'E-AC3';
+  if (/ac3|ac-3|a52/.test(l)) return 'AC3'; if (/mpga|mp3|mpeg-?1?l?3/.test(l)) return 'MP3'; if (/opus/.test(l)) return 'Opus'; if (/dts/.test(l)) return 'DTS';
+  return c.replace(/^(video|audio)\//i, '').toUpperCase().slice(0, 12);
+}
+function infoRows() {
+  var o = Player.info(), r = [], v = [], a = [];
+  function row(k, val) { if (val) r.push('<div class="sir"><span>' + esc(t(k)) + '</span><b>' + esc(val) + '</b></div>'); }
+  row('siEngine', o.engine);
+  if (o.w && o.h) v.push(o.w + '×' + o.h); if (o.vcodec) v.push(prettyCodec(o.vcodec)); if (o.fps) v.push((Math.round(o.fps * 100) / 100) + ' fps');
+  row('siVideo', v.join('  ·  '));
+  if (o.acodec) a.push(prettyCodec(o.acodec)); if (o.ach) a.push(o.ach + ' ' + t('siCh')); if (o.ahz) a.push((o.ahz / 1000) + ' kHz');
+  row('siAudio', a.join('  ·  '));
+  var kb = o.kbps || (o.vbr ? Math.round((o.vbr + (o.abr || 0)) / 1000) : 0);
+  if (kb) row('siRate', kb >= 1000 ? (kb / 1000).toFixed(1) + ' Mbps' : kb + ' kbps');
+  if (o.buf >= 0) row('siBuf', (o.buf / 1000).toFixed(1) + ' ' + t('siSec'));
+  if (o.dropped >= 0) row('siDrop', o.dropped + (o.shown > 0 ? ' ' + t('siOf') + ' ' + o.shown : ''));
+  row('siKind', o.live ? t('siLive') : t('siVod') + (o.dur ? '  ·  ' + fmtMs(o.pos) + ' / ' + fmtMs(o.dur) : ''));
+  row('siServer', o.host);
+  return '<div class="sit">ℹ ' + esc(t('streamInfo')) + '</div>' + r.join('') + '<div class="sih">' + esc(t('siClose')) + '</div>';
+}
+function showInfo() {
+  var el = $('#sinfo'); if (!el) { el = document.createElement('div'); el.id = 'sinfo'; $('#app').appendChild(el); }
+  clearInterval(showInfo.t); var n = 0;
+  el.innerHTML = infoRows(); el.style.display = 'block';
+  showInfo.t = setInterval(function () { if (++n > 20 || (S.screen !== 'full' && S.screen !== 'vod')) { hideInfo(); return; } el.innerHTML = infoRows(); }, 1000);
+}
+function hideInfo() { clearInterval(showInfo.t); var el = $('#sinfo'); if (el) el.style.display = 'none'; }
+function infoOpen() { var el = $('#sinfo'); return !!(el && el.style.display === 'block'); }
+T.showInfo = showInfo; T.hideInfo = hideInfo; T.infoOpen = infoOpen;
+document.addEventListener('keydown', function (e) {               // any key closes it; Back only closes it
+  if (!infoOpen()) return; hideInfo();
+  if (e.keyCode === 10009 || e.keyCode === 8 || e.keyCode === 27 || e.keyCode === 461) { e.stopPropagation(); e.preventDefault(); }
+}, true);
 
 /* ======================================================================
  * SETTINGS (Netflix-style list)
@@ -853,15 +960,17 @@ var ASPK = ['fit', 'fill', 'zoom', '169', '43', '219'], ASPT = { fit: 'aspFit', 
 function aspLabel(k) { return t(ASPT[k] || 'aspFit'); }
 function pcEngine() { var e = Store.get('pcplayer', 'vlc'); return e === 'builtin' ? 'ffmpeg' : (e === 'ffmpeg' || e === 'vlcwin' ? e : 'vlc'); }
 function openSettings(pref) {
-  var y0 = pref && S.screen === 'settings' && !St.pick && !St.vpn ? St.sy : 0;     // changing a value keeps the list where it was
-  St.pick = false; St.vpn = false; go('settings'); T.applyLang(); var s = $('#s-settings');
+  var y0 = pref && S.screen === 'settings' && !St.pick && !St.vpn && !St.os ? St.sy : 0;     // changing a value keeps the list where it was
+  St.pick = false; St.vpn = false; St.os = false; go('settings'); T.applyLang(); var s = $('#s-settings');
   function row(act, label, val, desc) { return '<div class="srow f" data-act="' + act + '" data-desc="' + esc(desc || '') + '"><span class="sl">' + esc(label) + '</span><span class="sv">' + esc(val) + '</span></div>'; }
   function onOff(v) { return v ? t('on') : t('off'); }
   var h = '<div class="brand"><span class="mark"></span><b>Stalker<span>TV</span></b></div><div class="rtitle">' + esc(t('settingsT')) + '</div><div class="sbox" id="sbox"><div class="sin">';
   h += '<div class="sh">' + esc(t('playback')) + '</div>' + row('quality', t('defQuality'), qLabel(Prefs.quality), t('qualNote')) + row('autonext', t('autoNext'), onOff(Prefs.autonext), '') +
     row('resume', t('resumePlay'), onOff(Prefs.resume), '') + row('fast', t('fastStart'), onOff(Prefs.fast), t('fastNote')) + (window.ANDROID_APP ? row('engine', t('engine'), Store.get('aengine', 'vlc') === 'exo' ? 'ExoPlayer' : 'VLC', t('aEngineNote')) : T.hasAV ? row('engine', t('engine'), ({ auto: t('engAuto'), html5: 'HTML5', avplay: 'AVPlay' })[T.engineMode()], t('engineNote')) : (window.PC && window.PC.vlc ? row('engine', t('engine'), ({ vlc: 'VLC', vlcwin: t('engVlcWin'), ffmpeg: 'ffmpeg' })[pcEngine()], t('pcPlayerNote')) : '')) + row('aspect', t('aspect'), aspLabel(Prefs.aspect), t('aspNote')) + row('hist', t('clearHist'), '', '');
-  h += '<div class="sh">' + esc(t('subsT')) + '</div>' + row('subs', t('subAuto'), onOff(Prefs.subs), t('subNote')) + row('subLang', t('subTo'), T.Subs.langName(Prefs.subLang), '') + row('subBoth', t('subBoth'), onOff(Prefs.subBoth), '') + row('subSize', t('subSize'), t(Prefs.subSize === 'xl' ? 'sizeXL' : Prefs.subSize === 'l' ? 'sizeL' : 'sizeM'), '');
-  h += '<div class="sh">' + esc(t('ui')) + '</div>' + row('lang', t('lang2'), t('lang'), '') + row('perf', t('perf'), onOff(Prefs.perf), t('perfNote'));
+  h += '<div class="sh">' + esc(t('subsT')) + '</div>' + row('subs', t('subAuto'), onOff(Prefs.subs), t('subNote')) + row('subLang', t('subTo'), T.Subs.langName(Prefs.subLang), '') + row('subBoth', t('subBoth'), onOff(Prefs.subBoth), '') + row('subSize', t('subSize'), t(Prefs.subSize === 'xl' ? 'sizeXL' : Prefs.subSize === 'l' ? 'sizeL' : 'sizeM'), '') +
+    row('osub', '🌐 ' + t('osRow'), Store.get('osKey', '') ? t('osOnV') : t('osOffV'), t('osRowNote'));
+  h += '<div class="sh">' + esc(t('ui')) + '</div>' + row('lang', t('lang2'), t('lang'), '') + row('perf', t('perf'), onOff(Prefs.perf), t('perfNote')) +
+    (T.ptCan && T.ptCan() ? row('ptype', t('ptRow'), onOff(Store.get('ptype', true) !== false), t('ptNote')) : '');
   h += '<div class="sh">' + esc(t('conn')) + '</div>' + row('vpn', t('vpnT'), vpnLabel(), t('vpnAbout')) + row('relay', t('relayRow'), '', '') + row('diag', t('diagT'), diagVal(), diagDesc());
   h += '<div class="sh">' + esc(t('accountT')) + '</div>' + row('edit', t('editAcc'), S.acc ? S.acc.name : '', '') + row('accounts', t('switchAcc'), '', '');
   h += '</div></div><div class="sdesc" id="sdesc"></div>' + T.hintBar([['', 'OK', t('open')], ['', '⟲', t('back')]]);
@@ -871,7 +980,7 @@ function openSettings(pref) {
 var VPNM = ['auto', 'always', 'off'], VPNT = { auto: 'vpnAuto', always: 'vpnAlways', off: 'vpnOff' };
 function vpnLabel() { var m = Store.get('vpnMode', 'auto'), r = T.normRelay(Store.get('relay', '')); return r ? t(VPNT[m] || 'vpnAuto') : t('vpnNone'); }
 function openVpn(from, pref) {
-  St.vpn = true; St.vpnFrom = from || St.vpnFrom || 'settings'; St.pick = false; go('settings'); T.applyLang();
+  St.vpn = true; St.os = false; St.vpnFrom = from || St.vpnFrom || 'settings'; St.pick = false; go('settings'); T.applyLang();
   var s = $('#s-settings'), m = Store.get('vpnMode', 'auto'), rel = T.normRelay(Store.get('relay', ''));
   function row(act, label, val, desc) { return '<div class="srow f" data-act="' + act + '" data-desc="' + esc(desc || '') + '"><span class="sl">' + esc(label) + '</span><span class="sv">' + esc(val) + '</span></div>'; }
   var h = '<div class="brand"><span class="mark"></span><b>Stalker<span>TV</span></b></div><div class="rtitle">🛡 ' + esc(t('vpnT')) + '</div><div class="sbox" id="sbox"><div class="sin">';
@@ -896,6 +1005,43 @@ function vpnKey(k) {
     T.xhr(rel + '/ping', {}, 6000).then(function () { St.vpnRes = t('vpnOkT'); if (St.vpn) openVpn(null, a); }).catch(function () { St.vpnRes = t('vpnBadT'); if (St.vpn) openVpn(null, a); });
   }
 }
+/* internet subtitles (OpenSubtitles): key, optional free account, automatic search */
+function openOsub(pref) {
+  St.os = true; St.vpn = false; St.pick = false; go('settings'); T.applyLang();
+  var s = $('#s-settings'), k = String(Store.get('osKey', '') || ''), u = String(Store.get('osUser', '') || '');
+  function row(act, label, val, desc) { return '<div class="srow f" data-act="' + act + '" data-desc="' + esc(desc || '') + '"><span class="sl">' + esc(label) + '</span><span class="sv">' + esc(val) + '</span></div>'; }
+  var h = '<div class="brand"><span class="mark"></span><b>Stalker<span>TV</span></b></div><div class="rtitle">🌐 ' + esc(t('osT')) + '</div><div class="sbox" id="sbox"><div class="sin">';
+  h += '<div class="vnote">' + esc(t('osAbout')) + '</div>';
+  h += row('osKey', t('osKey'), k ? '••••' + k.slice(-4) : t('osKeyNone'), t('osHelpNote')) + row('osAcc', t('osAcc'), u || t('osAccNone'), t('osAccNote')) +
+    row('osAuto', t('osAuto'), Store.get('osAuto', true) !== false ? t('on') : t('off'), t('osAutoNote')) + row('osTest', t('osTest'), St.osRes || '', '') +
+    row('osHelp', t('osHelp'), '', t('osHelpNote'));
+  h += '</div></div><div class="sdesc" id="sdesc"></div>' + T.hintBar([['', 'OK', t('open')], ['', '⟲', t('back')]]);
+  s.innerHTML = h; St.sy = 0; Nav.init(s, pref ? '[data-act="' + pref + '"]' : '[data-act="osKey"]'); settingsScroll();
+}
+function osForm(pref) {
+  T.showFields({
+    title: 'OpenSubtitles', note: t('osHelpNote'),
+    fields: [['osKey', t('osKey'), 'API key', Store.get('osKey', '')], ['osUser', t('osUser'), '', Store.get('osUser', '')], ['osPass', t('osPass'), '', Store.get('osPass', '')]],
+    save: function (v) {
+      if (v.osUser !== Store.get('osUser', '') || v.osPass !== Store.get('osPass', '') || v.osKey !== Store.get('osKey', '')) Store.set('osTok', null);
+      Store.set('osKey', v.osKey.replace(/\s+/g, '')); Store.set('osUser', v.osUser); Store.set('osPass', v.osPass);
+    },
+    test: function (v) { return T.Subs.osTest ? T.Subs.osTest(v) : Promise.reject(''); },
+    back: function () { openOsub(pref); }
+  }, pref === 'osAcc' ? '[data-in="osUser"]' : null);
+}
+function osKeyH(k) {
+  if (k === 'back') { St.os = false; St.osRes = ''; openSettings('osub'); return; }
+  if (k === 'up' || k === 'down') { Nav.move(k); settingsScroll(); return; }
+  if (k !== 'ok' || !Nav.cur) return;
+  var a = Nav.cur.getAttribute('data-act');
+  if (a === 'osKey' || a === 'osAcc') osForm(a);
+  else if (a === 'osAuto') { Store.set('osAuto', Store.get('osAuto', true) === false); openOsub(a); }
+  else if (a === 'osTest' && T.Subs.osTest) {
+    St.osRes = t('vpnWait'); openOsub(a);
+    T.Subs.osTest().then(function (m) { St.osRes = '✓ ' + m; if (St.os) openOsub(a); }, function (e) { St.osRes = '✗ ' + ((e && e.message) || e); if (St.os) openOsub(a); });
+  }
+}
 function openLangPick() {
   go('settings'); St.pick = true; var s = $('#s-settings');
   var h = '<div class="brand"><span class="mark"></span><b>Stalker<span>TV</span></b></div><div class="rtitle">' + esc(t('subTo')) + '</div><div class="sbox" id="sbox"><div class="sin">';
@@ -910,6 +1056,7 @@ function settingsScroll() {
 }
 function settingsKey(k) {
   if (St.vpn) { vpnKey(k); return; }
+  if (St.os) { osKeyH(k); return; }
   if (St.pick) {
     if (k === 'back') { openSettings('subLang'); return; }
     if (k === 'up' || k === 'down') { Nav.move(k); settingsScroll(); return; }
@@ -926,6 +1073,8 @@ function settingsKey(k) {
   else if (a === 'subSize') { Prefs.subSize = Prefs.subSize === 'm' ? 'l' : Prefs.subSize === 'l' ? 'xl' : 'm'; T.savePrefs(); openSettings(a); }
   else if (a === 'aspect') { Prefs.aspect = ASPK[(ASPK.indexOf(Prefs.aspect) + 1) % ASPK.length]; T.savePrefs(); Player.applyAspect(); openSettings(a); }
   else if (a === 'perf') { Prefs.perf = !Prefs.perf; T.savePrefs(); openSettings(a); }
+  else if (a === 'ptype') { Store.set('ptype', Store.get('ptype', true) === false); openSettings(a); }
+  else if (a === 'osub') openOsub();
   else if (a === 'engine' && window.ANDROID_APP) { Store.set('aengine', Store.get('aengine', 'vlc') === 'exo' ? 'vlc' : 'exo'); openSettings(a); }
   else if (a === 'engine' && !T.hasAV) { Store.set('pcplayer', ({ vlc: 'ffmpeg', ffmpeg: 'vlcwin', vlcwin: 'vlc' })[pcEngine()]); openSettings(a); }
   else if (a === 'engine') { Store.set('engine', ({ avplay: 'auto', auto: 'html5', html5: 'avplay' })[T.engineMode()]); Store.set('h5fail_vod', 0); Store.set('h5fail_live', 0); openSettings(a); }
@@ -957,6 +1106,7 @@ function up(el, sel, root) { while (el && el !== root && el.nodeType === 1) { if
 function idxOf(map, node) { for (var k in map) if (map[k] === node) return Number(k); return -1; }
 T.tapMedia = function (el, x, y) {
   var sc = S.screen, n, i;
+  if (infoOpen()) { hideInfo(); return true; }
   if (Menu.open) {
     n = up(el, '.pmi', null);
     if (n) { i = Number(n.getAttribute('data-i')); if (Menu.items[i] && !Menu.items[i].dis) { Menu.idx = i; Menu.key('ok'); } return true; }
@@ -1083,5 +1233,5 @@ T.scrollMedia = function (el, dx, dy, axis) {
 function scrollMedia() {}
 T.keys.hub = hubKey; T.keys.rows = rowsKey; T.keys.lib = libKey; T.keys.detail = detailKey; T.keys.vod = vodKey; T.keys.settings = settingsKey;
 T.openHub = openHub; T.openMenu = openMenu; T.openSettings = openSettings;
-window.__media = { R: R, Dt: Dt, V: V, Hist: Hist, Fav: Fav, Pos: Pos, Menu: Menu };
+window.__media = { R: R, Dt: Dt, V: V, Hist: Hist, Fav: Fav, Pos: Pos, Menu: Menu, L: L, playMovie: playMovie, openDetail: openDetail, openLib: openLib };
 })();

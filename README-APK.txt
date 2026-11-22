@@ -15,3 +15,6 @@ Remote / keyboard: arrows, OK, Back, color keys, channel +/-, 0-9 all work.
 Phone: tap = OK, swipe = move, Back button = back.
 Same features as the TV app (EPG, subtitles, quality, screen fit...). Playback uses ExoPlayer (HLS, TS, MP4, MKV).
 Note: some audio formats (AC3/E-AC3) depend on the device's decoder.
+Internet subtitles: Settings -> Subtitles -> Internet subtitles (OpenSubtitles) - enter your free API key from opensubtitles.com
+(API Consumers -> New Consumer). Android TV boxes (no touch screen): when a search / text box is selected a QR code appears -
+scan it once with your phone and type there; the text goes into the box.

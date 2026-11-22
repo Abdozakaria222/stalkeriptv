@@ -187,6 +187,18 @@ P.selectTrack = function (type, idx) {
   return oSel.apply(this, arguments);
 };
 
+/* stream info panel: which engine and what it knows */
+var oInfo = P.info;
+P.info = function () {
+  var o = oInfo.apply(this, arguments);
+  if (V) { o.engine = V.mode === 'emb' ? 'VLC' : 'VLC (' + (T.getLang() === 'ar' ? 'نافذة' : 'window') + ')'; o.w = V.vw || 0; o.h = V.vh || 0; o.buf = -1; o.dropped = -1; o.live = !!V.live; o.dur = (V.len || 0) * 1000; o.pos = (V.t || 0) * 1000; }
+  else if (C && C.mode === 'ff') {
+    o.engine = 'ffmpeg'; var inf = C.info || {}, vv = inf.v || {}, aa = (inf.a || [])[C.a || 0] || (inf.a || [])[0];
+    if (vv.codec) o.vcodec = vv.codec; if (vv.w) { o.w = o.w || vv.w; o.h = o.h || vv.h; }
+    if (aa) { o.acodec = aa.codec; o.ach = aa.ch || 0; }
+  }
+  return o;
+};
 var oAsp = P.applyAspect;
 P.applyAspect = function () { var r = oAsp.apply(this, arguments); if (vEmb()) vcmd('aspect', T.Prefs.aspect || 'fit'); return r; };
 /* with VLC the subtitles are drawn by VLC itself: the app's subtitle menu becomes a list of the file's tracks (+ off) */
@@ -217,6 +229,17 @@ function hookSubs() {
     if (V && !(x && x.subShift !== undefined)) return false;
     return oAct.apply(this, arguments);
   };
+  /* subtitles from the internet: with VLC inside the window the picture covers the page, so VLC draws each line itself */
+  var oDraw = T.Subs.draw;
+  T.Subs.draw = function (main, orig) {
+    var r = oDraw.apply(this, arguments);
+    if (V) {
+      var want = vEmb() && T.Subs.extOn && T.Subs.extOn() && main && (T.S.screen === 'vod' || T.S.screen === 'full') ? String(main) + (orig ? '\n' + orig : '') : '';
+      if (want !== (V.marq || '')) { V.marq = want; vcmd('marq', want); }
+    }
+    return r;
+  };
+  T.pcSpuOff = function () { if (vEmb()) { vcmd('spu', -1); if (V.tracks) V.tracks.cs = -1; } };
 }
 if (T.Subs) hookSubs(); else document.addEventListener('DOMContentLoaded', hookSubs);
 

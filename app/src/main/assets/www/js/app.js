@@ -271,7 +271,8 @@ Xtream.prototype.connect = function () { return connectModes(this); };
 Xtream.prototype.accountInfo = function () {
   var u = this.info && this.info.user_info; if (!u) return Promise.resolve(null);
   var d = u.exp_date ? new Date(Number(u.exp_date) * 1000) : null;
-  return Promise.resolve({ end_date: d ? d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) : '', status: u.status, max: u.max_connections });
+  return Promise.resolve({ end_date: d ? d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) : '', exp: u.exp_date ? Number(u.exp_date) * 1000 : 0, unlimited: !u.exp_date || String(u.exp_date) === 'null',
+    status: u.status, max: u.max_connections, active: u.active_cons, trial: String(u.is_trial) === '1' });
 };
 Xtream.prototype.genres = function () {
   return this.req('get_live_categories').then(function (arr) {
@@ -370,6 +371,30 @@ var Player = {
       vid.style.left = (x - r.x) + 'px'; vid.style.top = (y - r.y) + 'px'; vid.style.width = w + 'px'; vid.style.height = h + 'px';
     }
   },
+  /* what is playing right now, for the "stream info" panel (best effort: each player tells what it knows) */
+  info: function () {
+    var o = { engine: '', w: 0, h: 0, vcodec: '', fps: 0, acodec: '', ach: 0, ahz: 0, kbps: 0, buf: -1, dropped: -1, shown: -1,
+      live: !(this.opts && this.opts.vod), dur: this.dur || 0, pos: this.ms || 0, host: String(this.url || '').replace(/^(https?:\/\/[^\/?#]+).*$/i, '$1') }, k;
+    var a = this.av && window.webapis && webapis.avplay;
+    if (a && a.__info) { var j = {}; try { j = a.__info() || {}; } catch (e0) {} for (k in j) o[k] = j[k]; }
+    else if (a) {
+      o.engine = 'AVPlay';
+      try {
+        (a.getCurrentStreamInfo() || []).forEach(function (x) {
+          var e = {}, g = function (n) { for (var q in e) if (q.toLowerCase() === n) return e[q]; return ''; };
+          try { e = JSON.parse(x.extra_info || '{}'); } catch (e1) {}
+          if (x.type === 'VIDEO') { o.w = Number(g('width')) || o.w; o.h = Number(g('height')) || o.h; o.vcodec = g('fourcc') || o.vcodec; o.fps = Number(g('framerate') || g('fps')) || o.fps; if (Number(g('bit_rate'))) o.kbps = Math.round(Number(g('bit_rate')) / 1000); }
+          else if (x.type === 'AUDIO') { o.acodec = g('fourcc') || o.acodec; o.ach = Number(g('channels')) || o.ach; o.ahz = Number(g('sample_rate')) || o.ahz; }
+        });
+      } catch (e2) {}
+      try { var bw = Number(a.getStreamingProperty('CURRENT_BANDWIDTH')); if (bw > 0) o.kbps = Math.round(bw / 1000); } catch (e3) {}
+    } else {
+      o.engine = 'HTML5'; o.w = vid.videoWidth || 0; o.h = vid.videoHeight || 0;
+      try { var b = vid.buffered; if (b && b.length) o.buf = Math.max(0, Math.round((b.end(b.length - 1) - vid.currentTime) * 1000)); } catch (e4) {}
+      try { var pq = vid.getVideoPlaybackQuality && vid.getVideoPlaybackQuality(); if (pq) { o.dropped = pq.droppedVideoFrames; o.shown = pq.totalVideoFrames; } } catch (e5) {}
+    }
+    return o;
+  },
   stop: function () {
     if (hasAV) document.documentElement.classList.remove('h5');   // page goes back to the light transparent layer over the AVPlay plane
     this.gen++; clearTimeout(this._wd); this.active = false; this.onTime = null; this.onSub = null; this.paused = false; this._sk = 0; this._skp = null;
@@ -377,6 +402,7 @@ var Player = {
     else { vid.onplaying = vid.onwaiting = vid.onerror = vid.onloadedmetadata = vid.ontimeupdate = vid.onended = null; try { vid.pause(); vid.removeAttribute('src'); vid.load(); } catch (e3) {} }
   },
   play: function (url, h, opts) {
+    this.opts = opts || {};
     opts = opts || {};
     var keepTime = opts.onTime || null, keepSub = opts.onSub || null;
     this.stop(); applyEngine(opts.vod);
@@ -632,6 +658,29 @@ function showSettings(back) {
     '<div class="note">' + esc(t('relayNote')) + '</div><div class="note">' + esc(t('xmltvNote')) + '</div><div class="btns"><div class="btn pri f" data-act="save">' + esc(t('save')) + '</div><div class="btn f" data-act="test">' + esc(t('test')) + '</div><div class="btn f" data-act="cancel">' + esc(t('cancel')) + '</div></div><div class="status" id="fstatus"></div></div>';
   Nav.init(s, '[data-in="relay"]');
 }
+/* a small form of text fields (used for keys / logins of optional services): o = { title, fields: [[id, label, placeholder, value]], note, save(vals), test(vals) -> Promise<text>, back() } */
+function showFields(o, prefSel) {
+  F = { mode: 'fields', o: o, back: o.back, vals: {} };
+  o.fields.forEach(function (f) { F.vals[f[0]] = f[3] == null ? '' : String(f[3]); });
+  go('form'); applyLang();
+  var s = $('#s-form'), h = '<div class="panel"><h2>' + esc(o.title) + '</h2><div class="fields">';
+  o.fields.forEach(function (f) { h += fld(f[0], f[1], true, f[2]); });
+  h += '</div>' + (o.note ? '<div class="note">' + esc(o.note) + '</div>' : '') + '<div class="btns"><div class="btn pri f" data-act="save">' + esc(t('save')) + '</div>' +
+    (o.test ? '<div class="btn f" data-act="test">' + esc(t('test')) + '</div>' : '') + '<div class="btn f" data-act="cancel">' + esc(t('cancel')) + '</div></div><div class="status" id="fstatus"></div></div>';
+  s.innerHTML = h; Nav.init(s, prefSel || '[data-in="' + o.fields[0][0] + '"]');
+}
+function fieldsAct(act) {
+  var o = F.o, vals = {};
+  if (act === 'input') { var i = $('#in-' + Nav.cur.getAttribute('data-in')); if (i) { i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch (e) {} } return; }
+  if (act === 'cancel') { if (o.back) o.back(); else showAccounts(); return; }
+  o.fields.forEach(function (f) { var i = $('#in-' + f[0]); vals[f[0]] = F.vals[f[0]] = i ? String(i.value).replace(/^\s+|\s+$/g, '') : ''; });
+  if (act === 'save') { if (o.save) o.save(vals); if (o.back) o.back(); else showAccounts(); toast(t('saved')); return; }
+  if (act === 'test' && o.test) {
+    formStatus('', t('testing'));
+    o.test(vals).then(function (m) { if (S.screen === 'form' && F && F.o === o) formStatus('ok', '✓ ' + m); },
+      function (e) { if (S.screen === 'form' && F && F.o === o) formStatus('bad', '✗ ' + ((e && e.message) || e || t('errNet'))); });
+  }
+}
 function settingsAct(act) {
   if (act === 'input') { var i = $('#in-relay'); if (i) i.focus(); return; }
   if (act === 'cancel') { if (F.back) F.back(); else showAccounts(); return; }
@@ -665,6 +714,7 @@ function errText(e) {
 }
 function formAct(act) {
   if (F.mode === 'settings') { settingsAct(act); return; }
+  if (F.mode === 'fields') { fieldsAct(act); return; }
   if (act === 'type') { var nv = Nav.cur.getAttribute('data-v'); if (nv !== F.type) { readForm(); F.type = nv; renderForm('[data-act="type"][data-v="' + nv + '"]'); } return; }
   if (act === 'fmt') { F.vals.fmt = F.vals.fmt === 'm3u8' ? 'ts' : 'm3u8'; Nav.cur.textContent = F.vals.fmt === 'm3u8' ? 'HLS (m3u8)' : 'MPEG-TS (ts)'; return; }
   if (act === 'input') { var i = $('#in-' + Nav.cur.getAttribute('data-in')); if (i) { i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch (e) {} } return; }
@@ -1201,7 +1251,7 @@ document.addEventListener('visibilitychange', function () {
 var T = window.__tv = {
   $: $, el: el, esc: esc, mkErr: mkErr, Store: Store, I18N: I18N, t: t, applyLang: applyLang, xhr: xhr, normRelay: normRelay, relayOf: relayOf, vpnMode: vpnMode,
   go: go, toast: toast, Nav: Nav, Player: Player, Prefs: Prefs, savePrefs: savePrefs, Quality: Quality, S: S, hintBar: hintBar, hue: hue,
-  showAccounts: showAccounts, saveAccounts: saveAccounts, enterLive: enterLive, loadLive: loadLive, openAccount: openAccount, showRelay: showSettings,
+  showAccounts: showAccounts, saveAccounts: saveAccounts, enterLive: enterLive, loadLive: loadLive, openAccount: openAccount, showRelay: showSettings, showFields: showFields,
   showForm: showForm, Portal: Portal, Xtream: Xtream, cleanCmd: cleanCmd, stageMsg: stageMsg, SCREENS: SCREENS, errText: errText,
   scale: function () { return SCALE; }, cw: function () { return CW; }, scrollLive: scrollLive, tapLive: tapLive, swipeLive: swipeLive, handleKey: handle, hasAV: hasAV, engineMode: engineMode, engineIsAV: engineIsAV, applyEngine: applyEngine, getLang: function () { return lang; }, setLang: function (l) { lang = l; Store.set('lang', l); applyLang(); },
   loadEpg: function (c) { loadEpg(c); }, keys: {}, menu: { open: false, key: function () {} }, openHub: null, openMenu: null, typing: null

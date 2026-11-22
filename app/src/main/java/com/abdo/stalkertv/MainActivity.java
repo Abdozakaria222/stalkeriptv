@@ -35,6 +35,11 @@ import org.videolan.libvlc.LibVLC;
 import org.videolan.libvlc.Media;
 import org.videolan.libvlc.util.VLCVideoLayout;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import androidx.media3.common.Format;
+import androidx.media3.exoplayer.DecoderCounters;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -43,7 +48,12 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.net.URL;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -223,6 +233,53 @@ public class MainActivity extends Activity {
         tracksJson = arr.toString();
     }
 
+    private static Object field(Object o, String n) {
+        try { return o.getClass().getField(n).get(o); } catch (Throwable t) { return null; }
+    }
+
+    private JSONObject buildInfo() throws Exception {
+        JSONObject o = new JSONObject();
+        if (usingVlc && vlc != null) {
+            o.put("engine", "VLC");
+            var vt = vlc.getCurrentVideoTrack();
+            if (vt != null) {
+                o.put("w", vt.width); o.put("h", vt.height); o.put("vcodec", String.valueOf(vt.codec));
+                if (vt.frameRateDen > 0) o.put("fps", (double) vt.frameRateNum / vt.frameRateDen);
+            }
+            var m = vlc.getMedia();
+            if (m != null) {
+                try {
+                    for (int i = 0; i < m.getTrackCount(); i++) {
+                        Object tr = m.getTrack(i);
+                        Object ch = field(tr, "channels");
+                        if (ch != null && !o.has("acodec")) {
+                            o.put("acodec", String.valueOf(field(tr, "codec"))); o.put("ach", ch);
+                            Object rate = field(tr, "rate"); if (rate != null) o.put("ahz", rate);
+                        }
+                    }
+                    var st = m.getStats();
+                    if (st != null) { o.put("kbps", Math.round(st.inputBitrate * 8000)); o.put("dropped", st.lostPictures); o.put("shown", st.displayedPictures); }
+                } finally { m.release(); }
+            }
+        } else if (player != null) {
+            o.put("engine", "ExoPlayer");
+            Format v = player.getVideoFormat(), a = player.getAudioFormat();
+            if (v != null) {
+                o.put("w", v.width); o.put("h", v.height); o.put("vcodec", v.codecs != null ? v.codecs : String.valueOf(v.sampleMimeType));
+                if (v.frameRate > 0) o.put("fps", (double) v.frameRate);
+                if (v.bitrate > 0) o.put("vbr", v.bitrate);
+            }
+            if (a != null) {
+                o.put("acodec", a.codecs != null ? a.codecs : String.valueOf(a.sampleMimeType)); o.put("ach", a.channelCount); o.put("ahz", a.sampleRate);
+                if (a.bitrate > 0) o.put("abr", a.bitrate);
+            }
+            o.put("buf", player.getTotalBufferedDuration());
+            DecoderCounters dc = player.getVideoDecoderCounters();
+            if (dc != null) { o.put("dropped", dc.droppedBufferCount); o.put("shown", dc.renderedOutputBufferCount); }
+        }
+        return o;
+    }
+
     /* ======================= VLC ======================= */
     private boolean ensureVlc() {
         if (vlc != null) return true;
@@ -382,6 +439,25 @@ public class MainActivity extends Activity {
     /* ======================= AVPlay-like player ======================= */
     private class PlayerApi {
         @JavascriptInterface public void setEngine(final String e) { wantVlc = !"exo".equals(e); }
+        /* a TV box (remote control, no touch screen): the app then offers typing from the phone */
+        @JavascriptInterface public boolean isTv() {
+            try {
+                android.app.UiModeManager um = (android.app.UiModeManager) MainActivity.this.getSystemService(android.content.Context.UI_MODE_SERVICE);
+                if (um != null && um.getCurrentModeType() == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) return true;
+            } catch (Throwable ignored) { }
+            try { return !MainActivity.this.getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN); } catch (Throwable t) { return false; }
+        }
+        /* stream info panel: what the current player knows (runs on the UI thread, where the players live) */
+        @JavascriptInterface public String info() {
+            final String[] out = { "{}" };
+            final CountDownLatch done = new CountDownLatch(1);
+            ui.post(new Runnable() { @Override public void run() {
+                try { out[0] = buildInfo().toString(); } catch (Throwable ignored) { }
+                done.countDown();
+            } });
+            try { done.await(800, TimeUnit.MILLISECONDS); } catch (InterruptedException ignored) { }
+            return out[0];
+        }
         @JavascriptInterface public void open(final String url) {
             ui.post(new Runnable() { @Override public void run() {
                 releasePlayer();
@@ -453,29 +529,41 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String body(int id) { String s = bodies.remove(id); return s == null ? "" : s; }
         @JavascriptInterface public void cancel(int id) { HttpURLConnection c = conns.remove(id); if (c != null) { try { c.disconnect(); } catch (Exception ignored) { } } }
         @JavascriptInterface public void request(final int id, final String method, final String url, final String headers, final int timeout) {
-            pool.execute(new Runnable() { @Override public void run() { doRequest(id, method, url, headers, timeout); } });
+            pool.execute(new Runnable() { @Override public void run() { doRequest(id, method, url, headers, timeout, null); } });
+        }
+        /* the same with a request body (POST of JSON, e.g. the subtitle service) */
+        @JavascriptInterface public void requestBody(final int id, final String method, final String url, final String headers, final int timeout, final String body) {
+            pool.execute(new Runnable() { @Override public void run() { doRequest(id, method, url, headers, timeout, body); } });
         }
     }
 
-    private void doRequest(int id, String method, String url, String headersJson, int timeout) {
+    private void doRequest(int id, String method, String url, String headersJson, int timeout, String body) {
         int status = -1; String hdrs = "{}";
         try {
-            String cur = url; HttpURLConnection c = null;
+            String cur = url, verb = method == null ? "GET" : method, fallback = null; HttpURLConnection c = null;
+            byte[] payload = body == null ? null : body.getBytes(StandardCharsets.UTF_8);
+            JSONObject h;
+            try { h = new JSONObject(headersJson == null ? "{}" : headersJson); } catch (Exception e) { h = new JSONObject(); }
+            // not sent: tells how to read a text file that is not UTF-8 (old Arabic subtitle files are windows-1256)
+            if (h.has("X-Fallback-Charset")) { fallback = h.optString("X-Fallback-Charset"); h.remove("X-Fallback-Charset"); }
             for (int hop = 0; hop < 6; hop++) {
                 c = (HttpURLConnection) new URL(cur).openConnection();
                 conns.put(id, c);
                 c.setInstanceFollowRedirects(false);
                 c.setConnectTimeout(Math.min(timeout, 20000)); c.setReadTimeout(timeout);
-                c.setRequestMethod(method == null ? "GET" : method);
+                c.setRequestMethod(verb);
                 c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10; TV) AppleWebKit/537.36 StalkerTV/3");
-                try {
-                    JSONObject h = new JSONObject(headersJson == null ? "{}" : headersJson);
-                    Iterator<String> it = h.keys();
-                    while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.optString(k)); }
-                } catch (Exception ignored) { }
+                Iterator<String> it = h.keys();
+                while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.optString(k)); }
+                if (payload != null) {
+                    c.setDoOutput(true); c.setFixedLengthStreamingMode(payload.length);
+                    OutputStream os = c.getOutputStream(); os.write(payload); os.close();
+                }
                 int code = c.getResponseCode();
                 if (code >= 300 && code < 400 && c.getHeaderField("Location") != null) {
-                    cur = new URL(new URL(cur), c.getHeaderField("Location")).toString(); c.disconnect(); continue;
+                    cur = new URL(new URL(cur), c.getHeaderField("Location")).toString(); c.disconnect();
+                    if (code != 307 && code != 308) { verb = "GET"; payload = null; }
+                    continue;
                 }
                 break;
             }
@@ -493,10 +581,18 @@ public class MainActivity extends Activity {
                 in.close();
             }
             if (status >= 0) {
-                String ct = c.getContentType(), cs = "UTF-8";
+                String ct = c.getContentType(), cs = "UTF-8", text = null;
                 if (ct != null && ct.toLowerCase().contains("charset=")) cs = ct.substring(ct.toLowerCase().indexOf("charset=") + 8).replace("\"", "").trim();
-                Charset charset; try { charset = Charset.forName(cs); } catch (Exception e) { charset = Charset.forName("UTF-8"); }
-                bodies.put(id, new String(out.toByteArray(), charset));
+                byte[] raw = out.toByteArray();
+                if (fallback != null && cs.toLowerCase().replace("-", "").equals("utf8")) {
+                    try {
+                        text = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(raw)).toString();
+                    } catch (CharacterCodingException e) {
+                        try { text = new String(raw, Charset.forName(fallback)); } catch (Exception e2) { text = null; }
+                    }
+                }
+                if (text == null) { Charset charset; try { charset = Charset.forName(cs); } catch (Exception e) { charset = Charset.forName("UTF-8"); } text = new String(raw, charset); }
+                bodies.put(id, text);
             }
         } catch (SocketTimeoutException e) { status = -2; }
         catch (Exception e) { status = -1; }
