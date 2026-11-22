@@ -788,7 +788,7 @@ function vodKey(k) {
 var Menu = T.menu;
 Menu.items = []; Menu.idx = 0; Menu.mode = '';
 function openMenu(mode) {
-  Menu.mode = mode; Menu.open = true; Menu.vs = null; Menu.top = 0; buildMenu(); showMenu();
+  Menu.mode = mode; Menu.open = true; Menu.vs = null; Menu.top = 0; Menu.free = false; Menu.acc = 0; buildMenu(); showMenu();
   Quality.load(Player.master || Player.url).then(function (vs) { if (!Menu.open) return; Menu.vs = vs; buildMenu(); showMenu(); });
 }
 function buildMenu() {
@@ -812,8 +812,9 @@ function showMenu() {
   var m = $('#pmenu'); m.style.display = 'block';
   // only a window of rows is drawn (the list can hold 50+ languages); it scrolls with the focus
   var n = Menu.items.length, VIS = 9, st = Menu.top || 0;
-  if (Menu.idx < st + 1) st = Math.max(0, Menu.idx - 1); else if (Menu.idx > st + VIS - 2) st = Math.min(Math.max(0, n - VIS), Menu.idx - VIS + 2);
-  if (st > 0 && Menu.items[st] && !Menu.items[st].hdr) { var hh = st; while (hh > 0 && !Menu.items[hh - 1].hdr) hh--; if (hh > 0 && st - hh < 3) st = hh - 1; }
+  if (Menu.free) st = Math.max(0, Math.min(st, Math.max(0, n - VIS)));
+  else if (Menu.idx < st + 1) st = Math.max(0, Menu.idx - 1); else if (Menu.idx > st + VIS - 2) st = Math.min(Math.max(0, n - VIS), Menu.idx - VIS + 2);
+  if (!Menu.free && st > 0 && Menu.items[st] && !Menu.items[st].hdr) { var hh = st; while (hh > 0 && !Menu.items[hh - 1].hdr) hh--; if (hh > 0 && st - hh < 3) st = hh - 1; }
   Menu.top = st;
   m.innerHTML = '<div class="pmt">' + esc(t('menuTitle')) + '</div>' + (st > 0 ? '<div class="pmmore">▲</div>' : '<div class="pmmore">&nbsp;</div>') + Menu.items.slice(st, st + VIS).map(function (x, k) {
     var i = st + k; return x.hdr ? '<div class="pmh">' + esc(x.l) + '</div>' : '<div data-i="' + i + '" class="pmi' + (i === Menu.idx ? ' focus' : '') + (x.dis ? ' dis' : '') + '">' + (x.sel ? '<b>✓</b>' : '<b></b>') + '<span>' + esc(x.l) + '</span></div>';
@@ -826,6 +827,7 @@ function stepMenu(d) {
 }
 function closeMenu() { Menu.open = false; $('#pmenu').style.display = 'none'; }
 Menu.key = function (k) {
+  if (k === 'up' || k === 'down') Menu.free = false;
   if (k === 'back' || k === 'yellow') { closeMenu(); return; }
   if (k === 'up') { stepMenu(-1); showMenu(); return; }
   if (k === 'down') { stepMenu(1); showMenu(); return; }
@@ -850,6 +852,7 @@ var ASPK = ['fit', 'fill', 'zoom', '169', '43', '219'], ASPT = { fit: 'aspFit', 
 function aspLabel(k) { return t(ASPT[k] || 'aspFit'); }
 function pcEngine() { var e = Store.get('pcplayer', 'vlc'); return e === 'builtin' ? 'ffmpeg' : (e === 'ffmpeg' || e === 'vlcwin' ? e : 'vlc'); }
 function openSettings(pref) {
+  var y0 = pref && S.screen === 'settings' && !St.pick && !St.vpn ? St.sy : 0;     // changing a value keeps the list where it was
   St.pick = false; St.vpn = false; go('settings'); T.applyLang(); var s = $('#s-settings');
   function row(act, label, val, desc) { return '<div class="srow f" data-act="' + act + '" data-desc="' + esc(desc || '') + '"><span class="sl">' + esc(label) + '</span><span class="sv">' + esc(val) + '</span></div>'; }
   function onOff(v) { return v ? t('on') : t('off'); }
@@ -861,7 +864,7 @@ function openSettings(pref) {
   h += '<div class="sh">' + esc(t('conn')) + '</div>' + row('vpn', t('vpnT'), vpnLabel(), t('vpnAbout')) + row('relay', t('relayRow'), '', '') + row('diag', t('diagT'), diagVal(), diagDesc());
   h += '<div class="sh">' + esc(t('accountT')) + '</div>' + row('edit', t('editAcc'), S.acc ? S.acc.name : '', '') + row('accounts', t('switchAcc'), '', '');
   h += '</div></div><div class="sdesc" id="sdesc"></div>' + T.hintBar([['', 'OK', t('open')], ['', '⟲', t('back')]]);
-  s.innerHTML = h; St.sy = 0;
+  s.innerHTML = h; St.sy = y0;
   Nav.init(s, pref ? '[data-act="' + pref + '"]' : null); settingsScroll();
 }
 var VPNM = ['auto', 'always', 'off'], VPNT = { auto: 'vpnAuto', always: 'vpnAlways', off: 'vpnOff' };
@@ -956,6 +959,11 @@ T.tapMedia = function (el, x, y) {
   if (Menu.open) {
     n = up(el, '.pmi', null);
     if (n) { i = Number(n.getAttribute('data-i')); if (Menu.items[i] && !Menu.items[i].dis) { Menu.idx = i; Menu.key('ok'); } return true; }
+    if ((n = up(el, '.pmmore', null))) {
+      var pg = n.textContent.indexOf('▲') >= 0 ? -6 : n.textContent.indexOf('▼') >= 0 ? 6 : 0;
+      if (pg) { Menu.free = true; Menu.top = Math.max(0, Math.min((Menu.top || 0) + pg, Math.max(0, Menu.items.length - 9))); showMenu(); }
+      return true;
+    }
     if (!up(el, '#pmenu', null)) { closeMenu(); return true; }
     return true;
   }
@@ -1013,7 +1021,22 @@ T.swipeMedia = function (dir, steps, el) {
 function clampN(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 T.scrollMedia = function (el, dx, dy, axis) {
   var sc = S.screen, n, i;
-  if (Menu.open) return false;
+  if (Menu.open) {                                  // while the menu is open a drag never zaps / seeks underneath
+    if (axis !== 'y' || !up(el, '#pmenu', null)) return true;
+    Menu.free = true; Menu.acc = (Menu.acc || 0) - dy / 65;
+    var ms = Menu.acc < 0 ? Math.ceil(Menu.acc) : Math.floor(Menu.acc);
+    if (ms) { Menu.acc -= ms; var top0 = Menu.top || 0; Menu.top = Math.max(0, Math.min(top0 + ms, Math.max(0, Menu.items.length - 9))); if (Menu.top !== top0) showMenu(); }
+    return true;
+  }
+  if (sc === 'settings') {
+    var box = $('#sbox'), sin = box && box.firstChild;
+    if (!sin || !up(el, '#sbox', null)) return false;
+    if (axis !== 'y') return true;
+    var smax = Math.max(0, sin.scrollHeight - box.clientHeight + 40);
+    St.sy = clampN(St.sy - dy, 0, smax); sin.style.transition = 'none'; sin.style.transform = 'translateY(' + (-St.sy) + 'px)';
+    clearTimeout(scrollMedia.st); scrollMedia.st = setTimeout(function () { sin.style.transition = ''; }, 300);
+    return true;
+  }
   if (sc === 'detail') {
     if (!up(el, '.deps,.dsc,.ep', null) || !Dt.seasons || !Dt.seasons[Dt.si]) return false;
     if (axis !== 'y') return true;
