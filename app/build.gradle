@@ -8,8 +8,8 @@ android {
         applicationId 'com.abdo.stalkertv'
         minSdk 21
         targetSdk 34
-        versionCode 360
-        versionName '3.6.0'
+        versionCode 361
+        versionName '3.6.1'
         ndk { abiFilters 'armeabi-v7a', 'arm64-v8a' }
     }
     buildTypes {

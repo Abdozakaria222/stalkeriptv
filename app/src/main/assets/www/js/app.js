@@ -674,7 +674,10 @@ function fieldsAct(act) {
   if (act === 'input') { var i = $('#in-' + Nav.cur.getAttribute('data-in')); if (i) { i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch (e) {} } return; }
   if (act === 'cancel') { if (o.back) o.back(); else showAccounts(); return; }
   o.fields.forEach(function (f) { var i = $('#in-' + f[0]); vals[f[0]] = F.vals[f[0]] = i ? String(i.value).replace(/^\s+|\s+$/g, '') : ''; });
-  if (act === 'save') { if (o.save) o.save(vals); if (o.back) o.back(); else showAccounts(); toast(t('saved')); return; }
+  if (act === 'save') {
+    var bad = o.save ? o.save(vals) : null; if (typeof bad === 'string') { formStatus('bad', '✗ ' + bad); return; }   // save() may refuse with a reason
+    if (o.back) o.back(); else showAccounts(); toast(t('saved')); return;
+  }
   if (act === 'test' && o.test) {
     formStatus('', t('testing'));
     o.test(vals).then(function (m) { if (S.screen === 'form' && F && F.o === o) formStatus('ok', '✓ ' + m); },

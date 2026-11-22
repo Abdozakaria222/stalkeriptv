@@ -970,7 +970,9 @@ function openSettings(pref) {
   h += '<div class="sh">' + esc(t('subsT')) + '</div>' + row('subs', t('subAuto'), onOff(Prefs.subs), t('subNote')) + row('subLang', t('subTo'), T.Subs.langName(Prefs.subLang), '') + row('subBoth', t('subBoth'), onOff(Prefs.subBoth), '') + row('subSize', t('subSize'), t(Prefs.subSize === 'xl' ? 'sizeXL' : Prefs.subSize === 'l' ? 'sizeL' : 'sizeM'), '') +
     row('osub', '🌐 ' + t('osRow'), Store.get('osKey', '') ? t('osOnV') : t('osOffV'), t('osRowNote'));
   h += '<div class="sh">' + esc(t('ui')) + '</div>' + row('lang', t('lang2'), t('lang'), '') + row('perf', t('perf'), onOff(Prefs.perf), t('perfNote')) +
-    (T.ptCan && T.ptCan() ? row('ptype', t('ptRow'), onOff(Store.get('ptype', true) !== false), t('ptNote')) : '');
+    (T.ptCan && T.ptCan() ? row('ptype', t('ptRow'), onOff(Store.get('ptype', true) !== false), t('ptNote')) : '') +
+    (T.phoneBox ? row('pmode', '📱 ' + t('pmRow'), T.phoneBox.mode() === 'github' ? 'GitHub' : 'ntfy', t('pmNote')) +
+      (T.phoneBox.mode() === 'github' ? row('ghBox', t('ghRow'), T.phoneBox.label(), t('ghRowNote')) : '') : '');
   h += '<div class="sh">' + esc(t('conn')) + '</div>' + row('vpn', t('vpnT'), vpnLabel(), t('vpnAbout')) + row('relay', t('relayRow'), '', '') + row('diag', t('diagT'), diagVal(), diagDesc());
   h += '<div class="sh">' + esc(t('accountT')) + '</div>' + row('edit', t('editAcc'), S.acc ? S.acc.name : '', '') + row('accounts', t('switchAcc'), '', '');
   h += '</div></div><div class="sdesc" id="sdesc"></div>' + T.hintBar([['', 'OK', t('open')], ['', '⟲', t('back')]]);
@@ -1074,6 +1076,12 @@ function settingsKey(k) {
   else if (a === 'aspect') { Prefs.aspect = ASPK[(ASPK.indexOf(Prefs.aspect) + 1) % ASPK.length]; T.savePrefs(); Player.applyAspect(); openSettings(a); }
   else if (a === 'perf') { Prefs.perf = !Prefs.perf; T.savePrefs(); openSettings(a); }
   else if (a === 'ptype') { Store.set('ptype', Store.get('ptype', true) === false); openSettings(a); }
+  else if (a === 'pmode') { Store.set('pmode', T.phoneBox.mode() === 'github' ? 'ntfy' : 'github'); openSettings(a); }
+  else if (a === 'ghBox') {
+    T.showFields({ title: 'GitHub', note: t('ghRowNote'), fields: [['ghBox', t('ghFld'), T.phoneBox.def, Store.get('ghBox', T.phoneBox.def)]],
+      save: function (v) { if (!T.phoneBox.cfg(v.ghBox)) return t('ghRowNote'); Store.set('ghBox', v.ghBox); },
+      test: function (v) { return T.phoneBox.test(v.ghBox || T.phoneBox.def); }, back: function () { openSettings('ghBox'); } });
+  }
   else if (a === 'osub') openOsub();
   else if (a === 'engine' && window.ANDROID_APP) { Store.set('aengine', Store.get('aengine', 'vlc') === 'exo' ? 'vlc' : 'exo'); openSettings(a); }
   else if (a === 'engine' && !T.hasAV) { Store.set('pcplayer', ({ vlc: 'ffmpeg', ffmpeg: 'vlcwin', vlcwin: 'vlc' })[pcEngine()]); openSettings(a); }

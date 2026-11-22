@@ -35,7 +35,7 @@ var EN = {
 };
 (function () { var k; for (k in AR) T.I18N.ar[k] = AR[k]; for (k in EN) T.I18N.en[k] = EN[k]; })();
 
-var UA = 'StalkerTV v3.6.0', API = 'https://api.opensubtitles.com/api/v1';
+var UA = 'StalkerTV v3.6.1', API = 'https://api.opensubtitles.com/api/v1';
 function key() { return String(Store.get('osKey', '') || '').replace(/\s+/g, ''); }
 function apiBase() { var h = String(Store.get('osHost', '') || ''); return /^[a-z0-9.-]+\.opensubtitles\.(com|org)$/i.test(h) ? 'https://' + h + '/api/v1' : API; }
 function err(msg, kind) { var e = new Error(msg); e.kind = kind || ''; return e; }

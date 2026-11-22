@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 FROZEN = getattr(sys, 'frozen', False)          # True when packed as StalkerTV.exe (PyInstaller)
 HERE = os.path.dirname(sys.executable) if FROZEN else os.path.dirname(os.path.abspath(__file__))
 APP = os.path.join(getattr(sys, '_MEIPASS', HERE), 'app') if FROZEN else os.path.join(HERE, 'app')
-VERSION = '3.6.0-pc'
+VERSION = '3.6.1-pc'
 if sys.stdout is None or sys.stderr is None:    # windowless exe (no console): keep prints from crashing, log to a file instead
     try:
         _lf = open(os.path.join(HERE, 'StalkerTV.log'), 'w', encoding='utf-8', buffering=1)
@@ -987,7 +987,7 @@ class H(BaseHTTPRequestHandler):
         code = getattr(r, 'status', None) or getattr(r, 'code', 502)
         gz = urllib.parse.urlsplit(url).path.lower().endswith('.gz') and code == 200 and not self.headers.get('Range')   # guide files (.xml.gz) are unpacked here
         self.send_response(code)
-        for k in ('Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges'):
+        for k in ('Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges', 'X-RateLimit-Remaining', 'Retry-After'):
             v = r.headers.get(k)
             if v and not (gz and k in ('Content-Length', 'Content-Type')):
                 self.send_header(k, v)
