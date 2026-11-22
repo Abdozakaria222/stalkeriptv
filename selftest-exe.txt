@@ -1,0 +1,11 @@
+VLC: D:\a\stalkeriptv\stalkeriptv\out\StalkerTV-PC\vlc\vlc.exe bundled: True frozen: True
+python-vlc 3.0.21203 libvlc b'3.0.24 Vetinari'
+state State.Playing time 7678 length 20023 size (320, 180)
+tracks {"a": [[-1, "Disable"], [1, "Track 1 - [Arabic]"], [2, "Track 2 - [English]"]], "s": [[-1, "Disable"], [3, "Track 1 - [Arabic]"], [4, "Track 2 - [English]"]], "ca": 1, "cs": 3}
+after seek to 12s: 13246
+after pause: State.Paused
+audio now 2 spu now 4 spu delay 500000
+after resize/aspect: State.Playing 15875
+after stop: State.Stopped
+SELFTEST OK
+pywebview ? BrowserView.instances: True
